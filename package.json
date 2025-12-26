@@ -1,0 +1,27 @@
+{
+  "name": "notion-agent",
+  "type": "module",
+  "scripts": {
+    "podcast-agent": "tsx src/agents/podcast-agent/index.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.1",
+    "@iarna/toml": "^2.2.5",
+    "@langfuse/otel": "^4.5.1",
+    "@langfuse/tracing": "^4.5.1",
+    "@opentelemetry/api-logs": "^0.208.0",
+    "@opentelemetry/instrumentation": "^0.208.0",
+    "@opentelemetry/sdk-logs": "^0.208.0",
+    "@opentelemetry/sdk-node": "^0.208.0",
+    "@vercel/otel": "^2.1.0",
+    "ai": "^6.0.3",
+    "dotenv": "^17.2.3",
+    "langfuse-vercel": "^3.38.6",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
