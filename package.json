@@ -2,7 +2,9 @@
   "name": "notion-agent",
   "type": "module",
   "scripts": {
-    "podcast-agent": "tsx src/agents/podcast-agent/index.ts"
+    "podcast-agent": "tsx src/agents/podcast-agent/index.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.1",
@@ -21,6 +23,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/parser": "^8.50.1",
+    "eslint": "^9.39.2",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   }
