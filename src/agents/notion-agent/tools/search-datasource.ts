@@ -1,7 +1,7 @@
 import { tool, generateText, Output } from 'ai';
 import { z } from 'zod';
 import { Client } from '@notionhq/client';
-import type { DataSourceObjectResponse, GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints';
+import type { DataSourceObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import { saveDatasource, checkCachedDatasource, type Datasource } from '../utils/datasource-toml.js';
 
 // Schema for LLM-extracted datasource metadata
@@ -46,26 +46,35 @@ ${JSON.stringify(rawData, null, 2)}`,
 }
 
 export const searchDatasource = tool({
-  description:
-    'Search for a Notion database by name and save its metadata (schema, property options) to a local file for later use in building filters.',
+  description: `Search for a Notion database by name and save its metadata (schema, property options) to local cache.
+Workflow: check local cache first → if not found → query Notion API → auto-save results.
+Note: Local cache may become outdated. If you encounter schema errors in later operations, use forceRefresh: true to fetch the latest schema from Notion.`,
   inputSchema: z.object({
     query: z.string().describe('Name of the database to search for'),
-    autoSave: z
+    forceRefresh: z
       .boolean()
       .optional()
-      .default(true)
-      .describe('Automatically save if only one match is found'),
+      .default(false)
+      .describe('Bypass local cache and fetch fresh data from Notion API'),
   }),
-  execute: async ({ query, autoSave = true }: { query: string; autoSave?: boolean }) => {
-    // Check cache first
-    const cacheResult = checkCachedDatasource(query);
-    if (cacheResult.isCached && cacheResult.datasource) {
-      return {
-        success: true,
-        message: cacheResult.message,
-        databases: [cacheResult.datasource],
-        fromCache: true,
-      };
+  execute: async ({
+    query,
+    forceRefresh = false,
+  }: {
+    query: string;
+    forceRefresh?: boolean;
+  }) => {
+    // Check cache first (unless forceRefresh is true)
+    if (!forceRefresh) {
+      const cacheResult = checkCachedDatasource(query);
+      if (cacheResult.isCached && cacheResult.datasource) {
+        return {
+          success: true,
+          message: cacheResult.message,
+          databases: [cacheResult.datasource],
+          fromCache: true,
+        };
+      }
     }
 
     if (!process.env.NOTION_TOKEN) {
@@ -102,72 +111,19 @@ export const searchDatasource = tool({
       };
     }
 
-    // Auto-save if single match - use LLM extraction
-    if (autoSave && dataSources.length === 1) {
-      const datasource = await extractDatasourceWithLLM(dataSources[0]);
-      const result = saveDatasource(datasource);
-      return {
-        success: true,
-        message: result.message,
-        databases: [datasource],
-        saved: datasource.name,
-      };
+    // Extract and save all matches
+    const savedDatasources: Datasource[] = [];
+    for (const ds of dataSources) {
+      const datasource = await extractDatasourceWithLLM(ds);
+      saveDatasource(datasource);
+      savedDatasources.push(datasource);
     }
 
-    // Multiple matches - return summary without full LLM extraction
     return {
       success: true,
-      message: `Found ${dataSources.length} database(s) matching "${query}". Use save_datasource to save one.`,
-      databases: dataSources.map((ds) => ({
-        name: ds.title.map((t) => t.plain_text).join('') || '(Untitled)',
-        id: ds.id,
-        propertyCount: Object.keys(ds.properties).length,
-      })),
+      message: `Found and saved ${savedDatasources.length} database(s) matching "${query}"`,
+      databases: savedDatasources,
     };
   },
 });
 
-export const saveDatasourceTool = tool({
-  description: 'Save a specific database metadata to the local file after searching.',
-  inputSchema: z.object({
-    databaseId: z.string().describe('The ID of the database to save'),
-  }),
-  execute: async ({ databaseId }: { databaseId: string }) => {
-    if (!process.env.NOTION_TOKEN) {
-      return {
-        success: false,
-        message: 'NOTION_TOKEN is not set in environment',
-      };
-    }
-
-    const notion = new Client({ auth: process.env.NOTION_TOKEN });
-
-    try {
-      const response: GetDataSourceResponse = await notion.dataSources.retrieve({
-        data_source_id: databaseId,
-      });
-
-      // GetDataSourceResponse can be partial or full
-      if (!('properties' in response)) {
-        return {
-          success: false,
-          message: 'Retrieved a partial data source response without properties',
-        };
-      }
-
-      const datasource = await extractDatasourceWithLLM(response as DataSourceObjectResponse);
-      const result = saveDatasource(datasource);
-
-      return {
-        success: true,
-        message: result.message,
-        saved: datasource,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: `Failed to retrieve database: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-  },
-});
