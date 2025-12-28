@@ -12,6 +12,18 @@ export default [
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
+      globals: {
+        // Node.js globals
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        globalThis: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': tseslint,

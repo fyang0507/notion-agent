@@ -3,10 +3,14 @@
   "type": "module",
   "scripts": {
     "podcast-agent": "tsx src/agents/podcast-agent/index.ts",
+    "notion-agent": "tsx src/agents/notion-agent/index.ts",
+    "test:mcp": "tsx scripts/test-mcp-connection.ts",
+    "test:mcp:tool": "tsx scripts/test-mcp-tool.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@ai-sdk/mcp": "^1.0.1",
     "@ai-sdk/openai": "^3.0.1",
     "@iarna/toml": "^2.2.5",
     "@langfuse/otel": "^4.5.1",
@@ -23,6 +27,8 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "@notionhq/notion-mcp-server": "^2.0.0",
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^8.50.1",
     "@typescript-eslint/parser": "^8.50.1",
