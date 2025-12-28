@@ -32,7 +32,7 @@ Initial implementation of a Notion agent focused on discovering and cataloging N
 - **Auto-Save on Single Match**: When search returns one database, automatically saves metadata
 
 ### Data Storage
-Location: `AGENT_WORKING_FOLDER/datasources.toml`
+Location: `AGENT_WORKING_FOLDER/notion_datasources.toml`
 ```toml
 [[datasources]]
 name = "Database Name"

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as TOML from '@iarna/toml';
 
-const OUTPUT_PATH = path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'datasources.toml');
+const OUTPUT_PATH = path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'notion_datasources.toml');
 
 export interface DatasourceProperty {
   type: string;

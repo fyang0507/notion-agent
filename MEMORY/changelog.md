@@ -7,7 +7,7 @@ Last Updated: 2025-12-28
 ### 2025-12-28: Notion Agent - Database Discovery & Cataloging
 - Created `notion-agent` for discovering and cataloging Notion databases with schema extraction
 - Implemented `search_datasource` and `save_datasource` tools using Notion API + LLM-powered metadata extraction
-- Built TOML-based caching system for datasource metadata in `AGENT_WORKING_FOLDER/datasources.toml`
+- Built TOML-based caching system for datasource metadata in `AGENT_WORKING_FOLDER/notion_datasources.toml`
 - Added debug script `scripts/search-notion-database.ts` for testing Notion database search
 
 ### 2025-12-26: Podcast Episode Recommendation Feature
