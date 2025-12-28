@@ -4,6 +4,12 @@ Last Updated: 2025-12-28
 
 ## Recent Changes
 
+### 2025-12-28: Notion Agent - Create Page Tool
+- Added `create_page` tool for creating pages in Notion databases with properties in Notion API format
+- Refactored `search_datasource`: removed auto-save param, added `forceRefresh` for cache bypass, auto-saves all matches
+- Removed separate `save_datasource` tool (functionality merged into search workflow)
+- Updated agent instructions with page creation workflow and property format examples
+
 ### 2025-12-28: Notion Agent - Database Discovery & Cataloging
 - Created `notion-agent` for discovering and cataloging Notion databases with schema extraction
 - Implemented `search_datasource` and `save_datasource` tools using Notion API + LLM-powered metadata extraction
