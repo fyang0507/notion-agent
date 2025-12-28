@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { ToolLoopAgent } from 'ai';
 import * as readline from 'readline';
-import { searchDatasource, saveDatasourceTool } from './tools/search-datasource.js';
+import { searchDatasource } from './tools/search-datasource.js';
+import { createPage } from './tools/create-page.js';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
 
@@ -13,23 +14,34 @@ sdk.start();
 
 const notionAgent = new ToolLoopAgent({
   model: 'google/gemini-3-flash',
-  instructions: `You are a Notion assistant that helps users discover and catalog their databases.
+  instructions: `You are a Notion assistant that helps users discover, catalog, and create pages in their databases.
 
 When the user wants to find a database:
 1. Use the search_datasource tool to search by name
-2. If single match: it will be auto-saved
-3. If multiple matches: present the options and ask the user which one to save
-4. Use save_datasource tool to save a specific database by ID
+2. If single match: schema will be auto-saved to local cache
+3. If multiple matches: present the options to the user (note that in case of multiple matches, schemas will not be saved)
 
 The saved metadata includes:
 - Database name and ID
 - All properties with their types
 - Available options for status, select, and multi_select properties
 
-This metadata can be used later to build query filters.`,
+Note: Cached metadata may become outdated. If you observe errors in other operations (e.g. schema error when creating a page), use forceRefresh: true to refresh the local cache.
+
+When the user wants to create a page:
+1. First ensure the datasource is cached (use search_datasource if needed)
+2. Use create_page with properties in Notion API format
+3. If the API returns an error, read the error message, adjust the format, and retry
+
+Properties must be in Notion API format. Example:
+{
+  "Name": { "title": [{ "text": { "content": "My Title" } }] },
+  "Tags": { "multi_select": [{ "name": "Tag1" }] },
+  "Date": { "date": { "start": "2024-01-15" } }
+}`,
   tools: {
     search_datasource: searchDatasource,
-    save_datasource: saveDatasourceTool,
+    create_page: createPage,
   },
   experimental_telemetry: { isEnabled: true },
 });
