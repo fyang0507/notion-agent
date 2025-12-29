@@ -4,46 +4,42 @@ Last Updated: 2025-12-29
 
 ## Summary
 
-Implemented an agent-led progressive disclosure skill system for the Notion agent, allowing database-specific operational rules to be loaded on-demand via shell commands.
+Implemented agent-led progressive disclosure skill system with draft-commit workflow for safe skill creation.
 
-## Implementation Details
+## Phase 1: Core Skill System (Committed)
 
-### Architecture Decision: Option A (OpenAI Shell Tool)
-Selected provider-specific shell tool approach over alternatives (Vercel Sandbox, just-bash, custom tool) for native integration with OpenAI models.
+### Read Commands
+- `skill list` - Show available skills
+- `skill read <name>` - Read skill instructions
+- `skill info <name>` - Show skill metadata
 
-### New Files Created
+### Key Files
+- `skills/index.ts`: Skill scanning, YAML frontmatter parsing, command handlers
+- `utils/shell-executor.ts`: Generic command router with prefix matching
+- `skills/_template/SKILL.md`: Template for skill file format
+- `skills/2025 Progress Tracker/SKILL.md`: First production skill
 
-**`src/agents/notion-agent/skills/index.ts`**
-- `scanSkills()`: Scans skills directory, parses YAML frontmatter from SKILL.md files
-- `getSkillList()`: Returns formatted skill list for agent instructions
-- `createSkillCommands()`: Returns command handlers for `skill list/read/info`
+## Phase 2: Draft-Commit Workflow (Uncommitted)
 
-**`src/agents/notion-agent/utils/shell-executor.ts`**
-- `createCommandExecutor()`: Generic command router matching commands by prefix
-- Handles quote stripping and returns structured output (stdout/stderr/exitCode)
+### Write Commands
+- `skill draft "<name>" "<content>"` - Create draft with frontmatter validation
+- `skill show-draft "<name>"` - Review draft content
+- `skill commit "<name>"` - Move draft to active skills
+- `skill discard "<name>"` - Delete draft
+- `skill check "<name>"` - Show datasource schema from cache
 
-**`src/agents/notion-agent/skills/_template/SKILL.md`**
-- Template documenting skill file format with YAML frontmatter + markdown body
-- Sections: Required Fields, Optional Fields with Defaults, Workflow, Notes
+### Agent Instruction Enhancements
+- Schema error recovery: refresh cache → check schema → update skill
+- Skill creation flow: ask for description → content → generate SKILL.md
+- Draft-commit requirement: never commit without explicit user approval
 
-**`src/agents/notion-agent/skills/2025 Progress Tracker/SKILL.md`**
-- First production skill with Chinese instructions for task tracker database
-- Defines Status default, Date format, Tasks category selection workflow
+### Key Implementation
+- `_drafts/` directory for staging skills before activation
+- `parseDraftArgs()` for parsing quoted multi-argument commands
+- `validateSkillContent()` enforces name/description frontmatter
+- `getDatasourceSchema()` retrieves cached datasource for reference
 
-### Agent Integration (`index.ts`)
-- Switched model from `google/gemini-3-flash` to `openai/gpt-5.1`
-- Added OpenAI shell tool with custom execute handler routing to skill commands
-- Injected skill list and command documentation into agent instructions
-- Updated page creation workflow to check skills before creating pages
-
-## Key Design Choices
-
-1. **Command-based access** (not file system): Agent uses `skill read <name>` instead of `cat /path/to/SKILL.md`, simplifying security and implementation
-2. **YAML frontmatter** via `gray-matter`: Metadata (name, description) separated from operational content
-3. **Prefix matching**: Commands sorted by length (longest first) for proper matching
-
-## Files Modified
-- `src/agents/notion-agent/index.ts`: +36 lines (shell tool, skill integration)
-
-## Testing Notes
-Skill system is ready for integration testing. Agent should proactively read skills before creating pages in known databases.
+## Design Choices
+1. **Command-based** (not filesystem): `skill read` vs `cat /path/to/SKILL.md`
+2. **Draft staging**: Prevents accidental skill activation without review
+3. **Frontmatter validation**: Ensures skills have required metadata

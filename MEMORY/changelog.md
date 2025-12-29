@@ -4,6 +4,12 @@ Last Updated: 2025-12-29
 
 ## Recent Changes
 
+### 2025-12-29: Notion Agent - Skill Draft-Commit Workflow
+- Added `skill draft/show-draft/commit/discard` commands for agent-led skill creation with user approval
+- Added `skill check` command to retrieve datasource schemas from cache
+- Updated agent instructions with schema error recovery and skill creation workflows
+- Extended test script with comprehensive draft-commit workflow tests
+
 ### 2025-12-29: Notion Agent - Skill System Implementation
 - Implemented agent-led skill system using OpenAI shell tool with custom command executor
 - Created `skills/index.ts` for skill scanning (YAML frontmatter parsing) and `skill list/read/info` commands
