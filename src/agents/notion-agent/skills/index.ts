@@ -1,10 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import matter from 'gray-matter';
-import { readDatasources } from '../utils/datasource-toml.js';
-
-const SKILLS_DIR = path.join(import.meta.dirname, '.');
-const DRAFTS_DIR = path.join(SKILLS_DIR, '_drafts');
+import {
+  readDatasources,
+  getDatasourcePath,
+  getSkillPath,
+  getDraftsDir,
+  getDatasourceByName,
+} from '../utils/datasource-store.js';
 
 export interface SkillMetadata {
   name: string;
@@ -12,34 +15,49 @@ export interface SkillMetadata {
 }
 
 /**
- * Scan the skills directory and return metadata for all valid skills
+ * Get the base path for all datasources
+ */
+function getDatasourcesBase(): string {
+  return path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'notion', 'datasources');
+}
+
+/**
+ * Scan the datasources directory and return metadata for all skills
  */
 export function scanSkills(): SkillMetadata[] {
-  if (!fs.existsSync(SKILLS_DIR)) {
+  // Trigger migration if needed
+  readDatasources();
+
+  const basePath = getDatasourcesBase();
+  if (!fs.existsSync(basePath)) {
     return [];
   }
 
-  const entries = fs.readdirSync(SKILLS_DIR, { withFileTypes: true });
+  const entries = fs.readdirSync(basePath, { withFileTypes: true });
   const skills: SkillMetadata[] = [];
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name === '_template' || entry.name === '_drafts') {
+    if (!entry.isDirectory() || entry.name === '_drafts') {
       continue;
     }
 
-    const skillPath = path.join(SKILLS_DIR, entry.name, 'SKILL.md');
+    const skillPath = path.join(basePath, entry.name, 'SKILL.md');
     if (!fs.existsSync(skillPath)) {
       continue;
     }
 
-    const raw = fs.readFileSync(skillPath, 'utf-8');
-    const { data } = matter(raw);
+    try {
+      const raw = fs.readFileSync(skillPath, 'utf-8');
+      const { data } = matter(raw);
 
-    if (data.name && data.description) {
-      skills.push({
-        name: data.name,
-        description: data.description,
-      });
+      if (data.name && data.description) {
+        skills.push({
+          name: data.name,
+          description: data.description,
+        });
+      }
+    } catch {
+      // Skip invalid skill files
     }
   }
 
@@ -56,9 +74,7 @@ export function getSkillList(): string {
     return `## Available Skills\nNo skills configured yet.`;
   }
 
-  const lines = skills
-    .map((s) => `- **${s.name}**: ${s.description}`)
-    .join('\n');
+  const lines = skills.map((s) => `- **${s.name}**: ${s.description}`).join('\n');
 
   return `## Available Skills\n${lines}`;
 }
@@ -133,12 +149,14 @@ export function draftSkill(name: string, content: string): SkillWriteResult {
     return { success: false, message: `Error: ${validation.error}` };
   }
 
+  const draftsDir = getDraftsDir();
+
   // Ensure _drafts directory exists
-  if (!fs.existsSync(DRAFTS_DIR)) {
-    fs.mkdirSync(DRAFTS_DIR, { recursive: true });
+  if (!fs.existsSync(draftsDir)) {
+    fs.mkdirSync(draftsDir, { recursive: true });
   }
 
-  const draftPath = path.join(DRAFTS_DIR, name);
+  const draftPath = path.join(draftsDir, name);
   if (!fs.existsSync(draftPath)) {
     fs.mkdirSync(draftPath, { recursive: true });
   }
@@ -150,20 +168,21 @@ export function draftSkill(name: string, content: string): SkillWriteResult {
 }
 
 /**
- * Commit a draft skill to the active skills directory
+ * Commit a draft skill to the datasource directory
  */
 export function commitSkill(name: string): SkillWriteResult {
-  const draftPath = path.join(DRAFTS_DIR, name);
+  const draftsDir = getDraftsDir();
+  const draftPath = path.join(draftsDir, name);
   const draftFile = path.join(draftPath, 'SKILL.md');
 
   if (!fs.existsSync(draftFile)) {
     return { success: false, message: `Error: No draft found for "${name}". Use 'skill draft' first.` };
   }
 
-  const targetPath = path.join(SKILLS_DIR, name);
-  const targetFile = path.join(targetPath, 'SKILL.md');
+  const targetPath = getDatasourcePath(name);
+  const targetFile = getSkillPath(name);
 
-  // Create target directory if needed
+  // Create target directory if needed (for skills without schemas)
   if (!fs.existsSync(targetPath)) {
     fs.mkdirSync(targetPath, { recursive: true });
   }
@@ -182,7 +201,8 @@ export function commitSkill(name: string): SkillWriteResult {
  * Discard a draft skill
  */
 export function discardDraft(name: string): SkillWriteResult {
-  const draftPath = path.join(DRAFTS_DIR, name);
+  const draftsDir = getDraftsDir();
+  const draftPath = path.join(draftsDir, name);
 
   if (!fs.existsSync(draftPath)) {
     return { success: false, message: `Error: No draft found for "${name}".` };
@@ -196,7 +216,8 @@ export function discardDraft(name: string): SkillWriteResult {
  * Read a draft skill's content
  */
 export function readDraft(name: string): string | null {
-  const draftFile = path.join(DRAFTS_DIR, name, 'SKILL.md');
+  const draftsDir = getDraftsDir();
+  const draftFile = path.join(draftsDir, name, 'SKILL.md');
   if (!fs.existsSync(draftFile)) {
     return null;
   }
@@ -204,12 +225,10 @@ export function readDraft(name: string): string | null {
 }
 
 /**
- * Get datasource schema from cache for a given name
+ * Get datasource schema for a given name
  */
 export function getDatasourceSchema(name: string): string | null {
-  const datasources = readDatasources();
-  const normalizedInput = name.toLowerCase().trim();
-  const datasource = datasources.find((d) => d.name.toLowerCase().trim() === normalizedInput);
+  const datasource = getDatasourceByName(name);
 
   if (!datasource) {
     return null;
@@ -228,14 +247,42 @@ export function getDatasourceSchema(name: string): string | null {
 }
 
 /**
+ * Get skill help text (all commands)
+ */
+function getSkillHelp(): string {
+  return `## Skill Commands
+
+Read:
+- skill list                        - List available skills
+- skill read "<name>"               - Read skill instructions
+- skill check "<name>"              - Show datasource schema from cache
+
+Write:
+- skill draft "<name>" "<content>"  - Create/update a draft skill (multiline compatible)
+- skill show-draft "<name>"         - Show draft content for review
+- skill commit "<name>"             - Move draft to active skills
+- skill discard "<name>"            - Delete a draft
+
+## Draft-Commit Workflow
+1. Use "skill draft" to save your generated content
+2. Show the draft to the user and ask for confirmation
+3. Use "skill commit" to stage draft to active skills
+
+## SKILL.md Format
+Required: YAML frontmatter with "name" and "description"
+Body: Freeform markdown with concise instructions for how to create entries`;
+}
+
+/**
  * Create skill command handlers for the command executor
  */
 export function createSkillCommands(): Record<string, (args: string) => string> {
-  const findSkill = (name: string) =>
-    scanSkills().find((s) => s.name.toLowerCase() === name.toLowerCase());
+  const findSkill = (name: string) => {
+    const skills = scanSkills();
+    return skills.find((s) => s.name.toLowerCase() === name.toLowerCase());
+  };
 
-  const listAvailable = () =>
-    scanSkills().map((s) => s.name).join(', ') || 'none';
+  const listAvailable = () => scanSkills().map((s) => s.name).join(', ') || 'none';
 
   return {
     'skill list': () => {
@@ -249,18 +296,18 @@ export function createSkillCommands(): Record<string, (args: string) => string> 
       const skill = findSkill(name);
       if (!skill) return `Error: Skill "${name}" not found. Available: ${listAvailable()}`;
 
-      const skillPath = path.join(SKILLS_DIR, name, 'SKILL.md');
+      // Use the skill name from metadata (which matches the directory name)
+      const skillPath = path.join(getDatasourcesBase(), skill.name, 'SKILL.md');
+      if (!fs.existsSync(skillPath)) {
+        return `Error: Skill file not found for "${name}".`;
+      }
+
       const raw = fs.readFileSync(skillPath, 'utf-8');
       return matter(raw).content.trim();
     },
 
-    'skill info': (name) => {
-      if (!name) return 'Error: Usage: skill info <name>';
-
-      const skill = findSkill(name);
-      if (!skill) return `Error: Skill "${name}" not found. Available: ${listAvailable()}`;
-
-      return `Name: ${skill.name}\nDescription: ${skill.description}`;
+    'skill help': () => {
+      return getSkillHelp();
     },
 
     'skill draft': (args) => {

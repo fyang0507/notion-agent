@@ -1,0 +1,28 @@
+name = "2026 Progress Tracker"
+id = "2c09782c-4f4a-81b6-aeb4-000b9320f5e5"
+
+[properties.Status]
+type = "status"
+options = [ "Not started", "In progress", "Done" ]
+
+[properties.Tasks]
+type = "select"
+options = [
+  "Family",
+  "Career & Job",
+  "Writing",
+  "Project",
+  "Career Event",
+  "Skill/Hobby",
+  "Book",
+  "Music",
+  "Activity (Offline)",
+  "Entertainment (Online)",
+  "Speical/Misc."
+]
+
+[properties.Date]
+type = "date"
+
+[properties.Task]
+type = "title"

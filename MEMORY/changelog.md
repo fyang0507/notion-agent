@@ -4,6 +4,12 @@ Last Updated: 2025-12-29
 
 ## Recent Changes
 
+### 2025-12-29: Notion Agent - Skill Data Architecture Refactor
+- Migrated datasource storage from single TOML file to per-datasource directory structure (`AGENT_WORKING_FOLDER/notion/datasources/<name>/`)
+- Moved skill files from source tree (`src/agents/notion-agent/skills/`) to co-locate with schemas in working folder
+- Implemented progressive disclosure: simplified system prompt, moved write commands behind `skill help`
+- Added auto-migration from old structure with cleanup of legacy locations
+
 ### 2025-12-29: Notion Agent - Skill Draft-Commit Workflow
 - Added `skill draft/show-draft/commit/discard` commands for agent-led skill creation with user approval
 - Added `skill check` command to retrieve datasource schemas from cache

@@ -1,0 +1,16 @@
+name = "写作"
+id = "d82afc9e-47f9-44f2-a27c-ae014236ba54"
+
+[properties.Date]
+type = "date"
+
+[properties."For AI Training"]
+type = "select"
+options = [ "Y", "N" ]
+
+[properties.Name]
+type = "title"
+
+[properties.Tags]
+type = "multi_select"
+options = [ "日常记趣", "嘘之默然", "我们生活的故事", "年度报告", "游记", "诗", "画册" ]
