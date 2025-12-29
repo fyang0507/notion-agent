@@ -29,3 +29,8 @@ Things are more dynamic when trying to read/write a block to a page in a data so
 3. read/write a page/block
 
 This naturally fits into the "Agent Skill" domain which can include some cross-session artifacts (in Notion's case, ID-name mapping, and schema manipulation guide).
+
+## On Skill system and Agent Bash Tool
+So far, Anthropic's skill layer is designed around using bash tool to access skill contents.
+Bash tool however is not a universal tool offered, but provider specific. So far, only OpenAI and Anthropic has built-in bash tool support. Otherwise, we need to use custom-made sandbox, or fallback to tool use.
+Notion agent chooses to use OpenAI/gpt-5.2 with built-in support to simplify the tech stack, albeit incurring more costs.
