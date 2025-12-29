@@ -1,7 +1,7 @@
 # Plan: Notion Agent Skill System
 
 **Date:** 2025-12-28
-**Status:** Planning complete, Option A selected
+**Status:** Implemented (2025-12-29) - see progress/2025-12-29-skill-system-implementation.md
 
 ## Problem Statement
 When creating Notion pages, the agent doesn't know:
