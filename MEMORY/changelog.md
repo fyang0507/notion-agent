@@ -4,6 +4,12 @@ Last Updated: 2025-12-29
 
 ## Recent Changes
 
+### 2025-12-29: Speech-to-Text (STT) Feature
+- Added Groq Whisper Large V3 transcription via Vercel AI SDK `@ai-sdk/groq`
+- Created `/api/transcribe` POST endpoint accepting audio via FormData
+- Built reusable `transcribeAudio()` utility in `src/lib/transcribe.ts`
+- Added CLI test script `scripts/test-transcribe.ts` for local testing
+
 ### 2025-12-29: Notion Agent - Skill Data Architecture Refactor
 - Migrated datasource storage from single TOML file to per-datasource directory structure (`AGENT_WORKING_FOLDER/notion/datasources/<name>/`)
 - Moved skill files from source tree (`src/agents/notion-agent/skills/`) to co-locate with schemas in working folder
