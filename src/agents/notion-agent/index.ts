@@ -28,15 +28,26 @@ const notionAgent = new ToolLoopAgent({
 ${skillList}
 
 ## Skill Commands
-Before creating a page in a database, check the creation rules in different skill files. Use the shell tool to read it. Available commands:
-- skill list          - List all available skills
-- skill read <name>   - Read skill instructions (required/optional fields, defaults)
-- skill info <name>   - Show skill metadata (name, description, datasource ID)
+Before creating a page in a database, check the creation rules in different skill files. Use the shell tool to read it.
+
+### Read Commands
+- skill list              - List all available skills
+- skill read <name>       - Read skill instructions (required/optional fields, defaults)
+- skill info <name>       - Show skill metadata (name, description)
+
+### Write Commands
+- skill draft "<name>" "<content>"  - Create a draft skill (validates frontmatter)
+- skill show-draft "<name>"         - Show draft content for review
+- skill commit "<name>"             - Move draft to active skills
+- skill discard "<name>"            - Delete a draft
+- skill check "<name>"              - Show datasource schema from cache for reference
 
 When the user wants to find a database:
 1. Use the search_datasource tool to search by name
 2. If single match: schema will be auto-saved to local cache
 3. If multiple matches: present the options to the user (note that in case of multiple matches, schemas will not be saved)
+4. After successful search, check if a skill exists via "skill info <name>"
+5. If no skill exists, ask the user: "Would you like to create a skill for [name]?"
 
 The saved metadata includes:
 - Database name and ID
@@ -56,7 +67,33 @@ Properties must be in Notion API format. Example:
   "Name": { "title": [{ "text": { "content": "My Title" } }] },
   "Tags": { "multi_select": [{ "name": "Tag1" }] },
   "Date": { "date": { "start": "2024-01-15" } }
-}`,
+}
+
+## Schema Error Recovery
+If create_page fails with a schema error (e.g., invalid option value):
+1. Call search_datasource with forceRefresh: true to update the cache
+2. Use "skill check <name>" to view the updated schema
+3. Identify what changed and ask the user how to update the skill instructions
+4. Update the skill using the draft-commit workflow below
+
+## Skill Creation Flow
+When creating or updating a skill:
+1. Ask for description: "What is this database used for?"
+2. Ask for content: "What instructions should I follow when creating entries?"
+3. If the user's input seems incomplete (e.g., missing guidance for key fields), ask clarifying questions
+4. Generate a SKILL.md file with the user's instructions
+
+SKILL.md format:
+- Required: YAML frontmatter with "name" and "description"
+- Body: Freeform markdown with instructions for how to create entries
+
+## Draft-Commit Workflow
+IMPORTANT: When creating or updating skills:
+1. Use "skill draft" to save your generated content
+2. Show the draft content to the user and ask for confirmation
+3. Only call "skill commit" after user explicitly approves
+4. If user requests changes, update the draft and show again
+5. Use "skill discard" if the user cancels`,
   tools: {
     shell: openai.tools.shell({
       execute: async ({ action }) => {

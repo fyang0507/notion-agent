@@ -1,15 +1,24 @@
 export type CommandHandler = (args: string) => string;
 
 /**
- * Strip surrounding quotes from a string (like bash does)
+ * Strip surrounding quotes from a string (like bash does).
+ * Only strips if the string is a single quoted argument (no internal quotes of the same type).
  */
 function stripQuotes(str: string): string {
   const trimmed = str.trim();
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1);
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    // Check if there are internal double quotes (indicating multiple quoted args)
+    const inner = trimmed.slice(1, -1);
+    if (!inner.includes('" "') && !inner.includes('"')) {
+      return inner;
+    }
+  }
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    // Check if there are internal single quotes (indicating multiple quoted args)
+    const inner = trimmed.slice(1, -1);
+    if (!inner.includes("' '") && !inner.includes("'")) {
+      return inner;
+    }
   }
   return trimmed;
 }
