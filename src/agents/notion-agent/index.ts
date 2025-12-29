@@ -1,8 +1,11 @@
 import 'dotenv/config';
 import { ToolLoopAgent } from 'ai';
+import { openai } from '@ai-sdk/openai';
 import * as readline from 'readline';
 import { searchDatasource } from './tools/search-datasource.js';
 import { createPage } from './tools/create-page.js';
+import { getSkillList, createSkillCommands } from './skills/index.js';
+import { createCommandExecutor } from './utils/shell-executor.js';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
 
@@ -12,9 +15,23 @@ const sdk = new NodeSDK({
 
 sdk.start();
 
+const executeCommand = createCommandExecutor({
+  ...createSkillCommands(),
+});
+
+const skillList = getSkillList();
+
 const notionAgent = new ToolLoopAgent({
-  model: 'google/gemini-3-flash',
+  model: "openai/gpt-5.1",
   instructions: `You are a Notion assistant that helps users discover, catalog, and create pages in their databases.
+
+${skillList}
+
+## Skill Commands
+Before creating a page in a database, check the creation rules in different skill files. Use the shell tool to read it. Available commands:
+- skill list          - List all available skills
+- skill read <name>   - Read skill instructions (required/optional fields, defaults)
+- skill info <name>   - Show skill metadata (name, description, datasource ID)
 
 When the user wants to find a database:
 1. Use the search_datasource tool to search by name
@@ -30,8 +47,9 @@ Note: Cached metadata may become outdated. If you observe errors in other operat
 
 When the user wants to create a page:
 1. First ensure the datasource is cached (use search_datasource if needed)
-2. Use create_page with properties in Notion API format
-3. If the API returns an error, read the error message, adjust the format, and retry
+2. If a skill exists for this datasource, read it first to understand field requirements
+3. Use create_page with properties in Notion API format
+4. If the API returns an error, read the error message, adjust the format, and retry
 
 Properties must be in Notion API format. Example:
 {
@@ -40,6 +58,20 @@ Properties must be in Notion API format. Example:
   "Date": { "date": { "start": "2024-01-15" } }
 }`,
   tools: {
+    shell: openai.tools.shell({
+      execute: async ({ action }) => {
+        const results = action.commands.map((command: string) => {
+          const output = executeCommand(command);
+          const isError = output.startsWith('Error:');
+          return {
+            stdout: isError ? '' : output,
+            stderr: isError ? output : '',
+            outcome: { type: 'exit' as const, exitCode: isError ? 1 : 0 },
+          };
+        });
+        return { output: results };
+      },
+    }),
     search_datasource: searchDatasource,
     create_page: createPage,
   },
@@ -56,8 +88,7 @@ async function main() {
 
   console.log('Notion Agent');
 
-  const prompt = (query: string): Promise<string> =>
-    new Promise((resolve) => rl.question(query, resolve));
+  const prompt = (query: string): Promise<string> => new Promise((resolve) => rl.question(query, resolve));
 
   while (true) {
     const userInput = await prompt('You: ');
