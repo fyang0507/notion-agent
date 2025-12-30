@@ -1,8 +1,15 @@
 # Project Changelog
 
-Last Updated: 2025-12-29
+Last Updated: 2025-12-30
 
 ## Recent Changes
+
+### 2025-12-30: Next.js Frontend with Lovable-generated UI Integration
+- Integrated Lovable-generated Vite+React UI into Next.js App Router architecture
+- Added 40+ shadcn/ui components and 6 chat-specific components (chat-page, sidebar, message-list, input-area, voice-recorder)
+- Connected frontend hooks to existing backend APIs: `use-chat.ts` → `/api/chat` streaming, `use-voice-recorder.ts` → `/api/transcribe`
+- Implemented localStorage-based conversation history with `use-conversations.ts` hook
+- Added dark/light mode support via next-themes with mobile-responsive design
 
 ### 2025-12-29: Unified Agent with Gateway Pattern
 - Unified podcast tools into skill-based bash tool design (unlock progressive disclosure)

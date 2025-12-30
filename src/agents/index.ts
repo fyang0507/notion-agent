@@ -2,11 +2,11 @@ import 'dotenv/config';
 import { ToolLoopAgent } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import * as readline from 'readline';
-import { searchDatasource } from '../skills/notion/tools/search-datasource.js';
-import { createPage } from '../skills/notion/tools/create-page.js';
-import { getSkillList, createNotionCommands } from '../skills/notion/index.js';
-import { createPodcastCommands } from '../skills/podcast/index.js';
-import { createCommandExecutor } from './utils/shell-executor.js';
+import { searchDatasource } from '../skills/notion/tools/search-datasource';
+import { createPage } from '../skills/notion/tools/create-page';
+import { getSkillList, createNotionCommands } from '../skills/notion/index';
+import { createPodcastCommands } from '../skills/podcast/index';
+import { createCommandExecutor } from './utils/shell-executor';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
 

@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { checkAndDedup } from '../utils/toml-reader.js';
+import { checkAndDedup } from '../utils/toml-reader';
 
 export const checkDuplicate = tool({
   description: 'Check if a podcast already exists in the saved podcasts list. Call this FIRST before searching or saving any podcast to avoid duplicates.',

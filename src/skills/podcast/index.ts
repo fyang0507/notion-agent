@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as TOML from '@iarna/toml';
-import { checkAndDedup, type PodcastEntry } from './utils/toml-reader.js';
-import { appendPodcast } from './utils/toml-writer.js';
-import { recommendEpisodesFromFeeds } from './utils/episode-recommender.js';
+import { checkAndDedup, type PodcastEntry } from './utils/toml-reader';
+import { appendPodcast } from './utils/toml-writer';
+import { recommendEpisodesFromFeeds } from './utils/episode-recommender';
 
 const PODCASTS_PATH = path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'podcasts.toml');
 

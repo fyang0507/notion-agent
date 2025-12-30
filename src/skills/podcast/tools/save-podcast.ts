@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { appendPodcast } from '../utils/toml-writer.js';
+import { appendPodcast } from '../utils/toml-writer';
 
 export const savePodcast = tool({
   description: 'Save a confirmed podcast to the local TOML file. Call this after the user confirms which podcast they want to save.',

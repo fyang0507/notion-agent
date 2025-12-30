@@ -2,8 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as TOML from '@iarna/toml';
 import { generateText } from 'ai';
-import { fetchAllEpisodes, type Episode } from './rss-fetcher.js';
-import { RECOMMENDATION_CONFIG } from '../config/recommendation-config.js';
+import { fetchAllEpisodes, type Episode } from './rss-fetcher';
+import { RECOMMENDATION_CONFIG } from '../config/recommendation-config';
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { LangfuseSpanProcessor } from "@langfuse/otel";
  

@@ -7,7 +7,7 @@ import {
   getSkillPath,
   getDraftsDir,
   getDatasourceByName,
-} from './utils/datasource-store.js';
+} from './utils/datasource-store';
 
 export interface SkillMetadata {
   name: string;

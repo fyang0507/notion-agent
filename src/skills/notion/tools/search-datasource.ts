@@ -2,7 +2,7 @@ import { tool, generateText, Output } from 'ai';
 import { z } from 'zod';
 import { Client } from '@notionhq/client';
 import type { DataSourceObjectResponse } from '@notionhq/client/build/src/api-endpoints';
-import { saveDatasource, checkCachedDatasource, type Datasource } from '../utils/datasource-store.js';
+import { saveDatasource, checkCachedDatasource, type Datasource } from '../utils/datasource-store';
 
 // Schema for LLM-extracted datasource metadata
 const DatasourceSchema = z.object({

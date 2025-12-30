@@ -1,5 +1,5 @@
 import Parser from 'rss-parser';
-import { RECOMMENDATION_CONFIG } from '../config/recommendation-config.js';
+import { RECOMMENDATION_CONFIG } from '../config/recommendation-config';
 
 export interface Episode {
   title: string;

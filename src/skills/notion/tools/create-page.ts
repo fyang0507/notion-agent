@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { Client } from '@notionhq/client';
 import type { CreatePageParameters } from '@notionhq/client/build/src/api-endpoints';
-import { readDatasources, type Datasource } from '../utils/datasource-store.js';
+import { readDatasources, type Datasource } from '../utils/datasource-store';
 
 function findDatasourceByName(name: string): Datasource | undefined {
   const datasources = readDatasources();

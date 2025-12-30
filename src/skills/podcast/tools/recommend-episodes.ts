@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { recommendEpisodesFromFeeds } from '../utils/episode-recommender.js';
+import { recommendEpisodesFromFeeds } from '../utils/episode-recommender';
 
 export const recommendEpisodes = tool({
   description:
