@@ -1,13 +1,15 @@
 ## Product Vision
-- Build a personal, web-first agent assistant with a Claude-Code-like chat UI + future voice input.
-- Core capabilities:
-  1) Recommend podcasts/videos.
-  2) Operate on Notion (query/create/update) + support media upload into pages/docs.
 
-## Tech Stack (JavaScript / Vercel)
-- Frontend: Next.js (App Router), responsive chat UI, attachments, streaming.
-- Agent runtime: Vercel AI SDK (tool calling + streaming).
-- Model access: Vercel AI Gateway
+Personal web agent with chat UI + voice input for:
+1. Podcast/video recommendations
+2. Notion operations (query/create/update)
 
-## Project memory
-MEMORY/ holds the project memory. Check when needing more contexts.
+## Architecture Notes
+
+- **Single-user**: Conversations in localStorage, no auth
+- **Agent factory**: Vercel AI SDK + AI Gateway, `src/agents/web-agent.ts` for web, `src/agents/index.ts` for CLI
+- **Telemetry**: Self-hosted Langfuse via OpenTelemetry
+
+## Project Memory
+
+MEMORY/ holds plans and context docs. Check when needing more background.
