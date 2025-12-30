@@ -5,3 +5,7 @@ feedUrl = "https://feed.xyzfm.space/ahng8d9qlywl"
 [[podcasts]]
 name = "Lightcone Podcast"
 feedUrl = "https://anchor.fm/s/f58d3330/podcast/rss"
+
+[[podcasts]]
+name = "一席"
+feedUrl = "https://feed.xyzfm.space/jq7xytwpykrg"

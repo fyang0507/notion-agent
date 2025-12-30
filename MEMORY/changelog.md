@@ -4,6 +4,13 @@ Last Updated: 2025-12-29
 
 ## Recent Changes
 
+### 2025-12-29: Unified Agent with Gateway Pattern
+- Unified podcast tools into skill-based bash tool design (unlock progressive disclosure)
+- Merged `notion-agent` and `podcast-agent` into unified agent at `src/agents/index.ts`
+- Extracted skills to standalone `src/skills/` directory with `notion/` and `podcast/` domains
+- Renamed all `skill *` commands to `notion *` prefix for clarity
+- Created shell command wrappers for podcast operations (`podcast list/search/save/check/recommend`), updated shell executor to support async command handlers for podcast operations
+
 ### 2025-12-29: Speech-to-Text (STT) Feature
 - Added Groq Whisper Large V3 transcription via Vercel AI SDK `@ai-sdk/groq`
 - Created `/api/transcribe` POST endpoint accepting audio via FormData

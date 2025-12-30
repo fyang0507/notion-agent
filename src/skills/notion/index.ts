@@ -7,7 +7,7 @@ import {
   getSkillPath,
   getDraftsDir,
   getDatasourceByName,
-} from '../utils/datasource-store.js';
+} from './utils/datasource-store.js';
 
 export interface SkillMetadata {
   name: string;
@@ -81,7 +81,7 @@ export function getSkillList(): string {
 
 /**
  * Parse the first quoted argument and return the rest as a second argument.
- * Used for 'skill draft "name" "content"' where content may contain quotes.
+ * Used for 'notion draft "name" "content"' where content may contain quotes.
  * Returns [name, content] or null if parsing fails.
  */
 function parseDraftArgs(input: string): [string, string] | null {
@@ -164,7 +164,7 @@ export function draftSkill(name: string, content: string): SkillWriteResult {
   const skillFile = path.join(draftPath, 'SKILL.md');
   fs.writeFileSync(skillFile, content, 'utf-8');
 
-  return { success: true, message: `Draft saved for "${name}". Use 'skill show-draft "${name}"' to review.` };
+  return { success: true, message: `Draft saved for "${name}". Use 'notion show-draft "${name}"' to review.` };
 }
 
 /**
@@ -176,7 +176,7 @@ export function commitSkill(name: string): SkillWriteResult {
   const draftFile = path.join(draftPath, 'SKILL.md');
 
   if (!fs.existsSync(draftFile)) {
-    return { success: false, message: `Error: No draft found for "${name}". Use 'skill draft' first.` };
+    return { success: false, message: `Error: No draft found for "${name}". Use 'notion draft' first.` };
   }
 
   const targetPath = getDatasourcePath(name);
@@ -247,36 +247,38 @@ export function getDatasourceSchema(name: string): string | null {
 }
 
 /**
- * Get skill help text (all commands)
+ * Get notion help text (all commands)
  */
-function getSkillHelp(): string {
-  return `## Skill Commands
+function getNotionHelp(): string {
+  return `## Notion Commands
 
 Read:
-- skill list                        - List available skills
-- skill read "<name>"               - Read skill instructions
-- skill check "<name>"              - Show datasource schema from cache
+- notion list                        - List available skills
+- notion read "<name>"               - Read skill instructions
+- notion check "<name>"              - Show datasource schema from cache
 
 Write:
-- skill draft "<name>" "<content>"  - Create/update a draft skill (multiline compatible)
-- skill show-draft "<name>"         - Show draft content for review
-- skill commit "<name>"             - Move draft to active skills
-- skill discard "<name>"            - Delete a draft
+- notion draft "<name>" "<content>"  - Create/update a draft skill (multiline compatible)
+- notion show-draft "<name>"         - Show draft content for review
+- notion commit "<name>"             - Move draft to active skills
+- notion discard "<name>"            - Delete a draft
 
 ## Draft-Commit Workflow
-1. Use "skill draft" to save your generated content
+1. Use "notion draft" to save your generated content
 2. Show the draft to the user and ask for confirmation
-3. Use "skill commit" to stage draft to active skills
+3. Use "notion commit" to stage draft to active skills
 
 ## SKILL.md Format
 Required: YAML frontmatter with "name" and "description"
 Body: Freeform markdown with concise instructions for how to create entries`;
 }
 
+export type CommandHandler = (args: string) => string;
+
 /**
- * Create skill command handlers for the command executor
+ * Create notion command handlers for the command executor
  */
-export function createSkillCommands(): Record<string, (args: string) => string> {
+export function createNotionCommands(): Record<string, CommandHandler> {
   const findSkill = (name: string) => {
     const skills = scanSkills();
     return skills.find((s) => s.name.toLowerCase() === name.toLowerCase());
@@ -285,13 +287,13 @@ export function createSkillCommands(): Record<string, (args: string) => string> 
   const listAvailable = () => scanSkills().map((s) => s.name).join(', ') || 'none';
 
   return {
-    'skill list': () => {
+    'notion list': () => {
       const skills = scanSkills();
       return skills.length ? skills.map((s) => s.name).join('\n') : 'No skills available.';
     },
 
-    'skill read': (name) => {
-      if (!name) return 'Error: Usage: skill read <name>';
+    'notion read': (name) => {
+      if (!name) return 'Error: Usage: notion read <name>';
 
       const skill = findSkill(name);
       if (!skill) return `Error: Skill "${name}" not found. Available: ${listAvailable()}`;
@@ -306,16 +308,16 @@ export function createSkillCommands(): Record<string, (args: string) => string> 
       return matter(raw).content.trim();
     },
 
-    'skill help': () => {
-      return getSkillHelp();
+    'notion help': () => {
+      return getNotionHelp();
     },
 
-    'skill draft': (args) => {
-      if (!args) return 'Error: Usage: skill draft "<name>" "<content>"';
+    'notion draft': (args) => {
+      if (!args) return 'Error: Usage: notion draft "<name>" "<content>"';
 
       const parsed = parseDraftArgs(args);
       if (!parsed) {
-        return 'Error: Usage: skill draft "<name>" "<content>". Both name and content must be quoted.';
+        return 'Error: Usage: notion draft "<name>" "<content>". Both name and content must be quoted.';
       }
 
       const [name, content] = parsed;
@@ -323,8 +325,8 @@ export function createSkillCommands(): Record<string, (args: string) => string> 
       return result.message;
     },
 
-    'skill show-draft': (name) => {
-      if (!name) return 'Error: Usage: skill show-draft "<name>"';
+    'notion show-draft': (name) => {
+      if (!name) return 'Error: Usage: notion show-draft "<name>"';
 
       const content = readDraft(name);
       if (!content) return `Error: No draft found for "${name}".`;
@@ -332,22 +334,22 @@ export function createSkillCommands(): Record<string, (args: string) => string> 
       return content;
     },
 
-    'skill commit': (name) => {
-      if (!name) return 'Error: Usage: skill commit "<name>"';
+    'notion commit': (name) => {
+      if (!name) return 'Error: Usage: notion commit "<name>"';
 
       const result = commitSkill(name);
       return result.message;
     },
 
-    'skill discard': (name) => {
-      if (!name) return 'Error: Usage: skill discard "<name>"';
+    'notion discard': (name) => {
+      if (!name) return 'Error: Usage: notion discard "<name>"';
 
       const result = discardDraft(name);
       return result.message;
     },
 
-    'skill check': (name) => {
-      if (!name) return 'Error: Usage: skill check "<name>"';
+    'notion check': (name) => {
+      if (!name) return 'Error: Usage: notion check "<name>"';
 
       const schema = getDatasourceSchema(name);
       if (!schema) return `Error: No cached datasource found for "${name}". Use search_datasource first.`;

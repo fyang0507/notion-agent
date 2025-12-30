@@ -1,4 +1,4 @@
-export type CommandHandler = (args: string) => string;
+export type CommandHandler = (args: string) => string | Promise<string>;
 
 /**
  * Strip surrounding quotes from a string (like bash does).
@@ -24,19 +24,19 @@ function stripQuotes(str: string): string {
 }
 
 /**
- * Create a command executor that routes commands to registered handlers.
+ * Create an async command executor that routes commands to registered handlers.
  *
- * Commands are matched by prefix, e.g., "skill list" matches handler registered as "skill list".
+ * Commands are matched by prefix, e.g., "notion list" matches handler registered as "notion list".
  * The remaining string after the command prefix is passed as args to the handler.
  * Quotes are stripped from arguments (like bash).
  */
 export function createCommandExecutor(
   commands: Record<string, CommandHandler>
-): (command: string) => string {
+): (command: string) => Promise<string> {
   // Sort commands by length (longest first) to match most specific command
   const sortedCommands = Object.keys(commands).sort((a, b) => b.length - a.length);
 
-  return function executeCommand(input: string): string {
+  return async function executeCommand(input: string): Promise<string> {
     const trimmed = input.trim();
 
     for (const cmd of sortedCommands) {

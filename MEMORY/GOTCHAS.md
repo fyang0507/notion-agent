@@ -34,3 +34,11 @@ This naturally fits into the "Agent Skill" domain which can include some cross-s
 So far, Anthropic's skill layer is designed around using bash tool to access skill contents.
 Bash tool however is not a universal tool offered, but provider specific. So far, only OpenAI and Anthropic has built-in bash tool support. Otherwise, we need to use custom-made sandbox, or fallback to tool use.
 Notion agent chooses to use OpenAI/gpt-5.2 with built-in support to simplify the tech stack, albeit incurring more costs.
+
+## Agent tool-detection patterns
+With notion operations fold into a skill-based system, it's time to consider two different agent patterns moving forward:
+1. keep non-notion operations as native tools
+2. migrate all tool usage into skill-based pattern
+Theoretically, Option 1 is easier to implement in the SDK, has better SDK (for example, explicit human approval control) and observability support; Option 2 is more robust to the explosion of tools once future tool-based capabilities are added thanks to progressive disclosure, and it also brings design parity with the notion tools.
+A more detailed comparison of agent pattern is recorded in MEMORY/plan/2025-12-29-agent-design-patterns.md
+We should evaluate both patterns once new tools are developed.
