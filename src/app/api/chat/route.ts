@@ -1,49 +1,91 @@
-import { createUnifiedAgent } from '@/agents/web-agent';
+import { createUnifiedAgent } from '@/agents';
+import { db, initDb } from '@/lib/db';
+import { convertToModelMessages, type UIMessage } from 'ai';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 interface ChatRequestBody {
-  messages: ChatMessage[];
+  conversationId: string;
+  messages: UIMessage[];
 }
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as ChatRequestBody;
-    const { messages } = body;
+    await initDb();
 
-    if (!messages || !Array.isArray(messages)) {
+    const body = (await req.json()) as ChatRequestBody;
+    const { conversationId, messages: inputMessages } = body;
+
+    if (!conversationId) {
+      return Response.json({ error: 'conversationId is required' }, { status: 400 });
+    }
+
+    if (!inputMessages || !Array.isArray(inputMessages)) {
       return Response.json({ error: 'Messages array is required' }, { status: 400 });
     }
 
     const agent = createUnifiedAgent();
 
-    const result = await agent.stream({ messages });
+    // Convert UIMessages to ModelMessages for the agent
+    const modelMessages = await convertToModelMessages(inputMessages);
+    const result = await agent.stream({ messages: modelMessages });
 
-    // Create a ReadableStream from the textStream
-    const stream = new ReadableStream({
-      async start(controller) {
-        const encoder = new TextEncoder();
+    // Use AI SDK's toUIMessageStreamResponse for proper streaming with tool parts
+    return result.toUIMessageStreamResponse({
+      originalMessages: inputMessages,
+      generateMessageId: () => crypto.randomUUID(),
+      onFinish: async ({ messages: allMessages }) => {
         try {
-          for await (const chunk of result.textStream) {
-            controller.enqueue(encoder.encode(chunk));
-          }
-          controller.close();
-        } catch (error) {
-          controller.error(error);
-        }
-      },
-    });
+          // Get the count of messages already in DB
+          const existingCount = await db.execute({
+            sql: 'SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?',
+            args: [conversationId],
+          });
+          const startIndex = Number(existingCount.rows[0]?.count ?? 0);
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
+          // Find new messages (those after the startIndex position)
+          // The allMessages array includes all messages from the conversation
+          const newMessages = allMessages.slice(startIndex);
+
+          // Save new messages
+          for (let i = 0; i < newMessages.length; i++) {
+            const msg = newMessages[i];
+            await db.execute({
+              sql: 'INSERT INTO messages (id, conversation_id, content, sequence_order) VALUES (?, ?, ?, ?)',
+              args: [msg.id, conversationId, JSON.stringify(msg), startIndex + i],
+            });
+          }
+
+          // Update conversation timestamp and title (use first user message as title if new)
+          const conv = await db.execute({
+            sql: 'SELECT title FROM conversations WHERE id = ?',
+            args: [conversationId],
+          });
+
+          const currentTitle = conv.rows[0]?.title as string;
+          let newTitle = currentTitle;
+
+          // Generate title from first user message if still "New conversation"
+          if (currentTitle === 'New conversation') {
+            const firstUserMsg = allMessages.find((m) => m.role === 'user');
+            if (firstUserMsg) {
+              const content =
+                firstUserMsg.parts
+                  ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+                  .map((p) => p.text)
+                  .join(' ') || '';
+              newTitle = content.slice(0, 50) + (content.length > 50 ? '...' : '');
+            }
+          }
+
+          await db.execute({
+            sql: 'UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?',
+            args: [newTitle, Date.now(), conversationId],
+          });
+        } catch (error) {
+          console.error('Error persisting messages:', error);
+        }
       },
     });
   } catch (error) {

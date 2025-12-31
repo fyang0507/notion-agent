@@ -35,6 +35,23 @@ So far, Anthropic's skill layer is designed around using bash tool to access ski
 Bash tool however is not a universal tool offered, but provider specific. So far, only OpenAI and Anthropic has built-in bash tool support. Otherwise, we need to use custom-made sandbox, or fallback to tool use.
 Notion agent chooses to use OpenAI/gpt-5.2 with built-in support to simplify the tech stack, albeit incurring more costs.
 
+## AI SDK useChat Message Sync
+The `useChat` hook's `messages` parameter is only used as **initial messages** when the hook first mounts or when the `id` changes. It does NOT reactively update when the prop changes.
+
+When switching conversations with async message loading:
+1. `currentConversationId` changes → triggers hook reinitialization
+2. Messages are fetched asynchronously via `useEffect`
+3. By the time messages arrive, `useChat` has already initialized with empty/stale messages
+
+**Fix:** Use `setMessages` from `useChat` to manually sync:
+```tsx
+const { messages, setMessages } = useChat({ id: currentConversationId });
+
+useEffect(() => {
+  setMessages(currentMessages);  // Sync when API fetch completes
+}, [currentMessages, setMessages]);
+```
+
 ## Agent tool-detection patterns
 With notion operations fold into a skill-based system, it's time to consider two different agent patterns moving forward:
 1. keep non-notion operations as native tools

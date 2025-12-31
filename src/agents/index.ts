@@ -2,30 +2,29 @@ import 'dotenv/config';
 import { ToolLoopAgent } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import * as readline from 'readline';
-import { searchDatasource } from '../skills/notion/tools/search-datasource';
-import { createPage } from '../skills/notion/tools/create-page';
-import { getSkillList, createNotionCommands } from '../skills/notion/index';
-import { createPodcastCommands } from '../skills/podcast/index';
+import { searchDatasource } from '@/skills/notion/tools/search-datasource';
+import { createPage } from '@/skills/notion/tools/create-page';
+import { getSkillList, createNotionCommands } from '@/skills/notion/index';
+import { createPodcastCommands } from '@/skills/podcast/index';
 import { createCommandExecutor } from './utils/shell-executor';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
 
-const sdk = new NodeSDK({
-  spanProcessors: [new LangfuseSpanProcessor()],
-});
+/**
+ * Factory function for creating the unified agent.
+ * Used by both web (imported) and CLI (direct execution).
+ */
+export function createUnifiedAgent() {
+  const executeCommand = createCommandExecutor({
+    ...createNotionCommands(),
+    ...createPodcastCommands(),
+  });
 
-sdk.start();
+  const skillList = getSkillList();
 
-const executeCommand = createCommandExecutor({
-  ...createNotionCommands(),
-  ...createPodcastCommands(),
-});
-
-const skillList = getSkillList();
-
-const unifiedAgent = new ToolLoopAgent({
-  model: 'openai/gpt-5.1',
-  instructions: `You are a personal assistant that helps users with Notion operations and podcast discovery. Always respond in the same language the user speaks.
+  return new ToolLoopAgent({
+    model: 'openai/gpt-5.1',
+    instructions: `You are a personal assistant that helps users with Notion operations and podcast discovery. Always respond in the same language the user speaks.
 
 ${skillList}
 
@@ -74,69 +73,84 @@ When the user provides a podcast name to save:
 When the user asks for podcast recommendations:
 - Use "podcast recommend" to fetch and rank recent episodes
 - Present the recommendations clearly with titles, podcast names, and reasons`,
-  tools: {
-    shell: openai.tools.shell({
-      execute: async ({ action }) => {
-        const results = await Promise.all(
-          action.commands.map(async (command: string) => {
-            const output = await executeCommand(command);
-            const isError = output.startsWith('Error:');
-            return {
-              stdout: isError ? '' : output,
-              stderr: isError ? output : '',
-              outcome: { type: 'exit' as const, exitCode: isError ? 1 : 0 },
-            };
-          })
-        );
-        return { output: results };
-      },
-    }),
-    search_datasource: searchDatasource,
-    create_page: createPage,
-  },
-  experimental_telemetry: { isEnabled: true },
-});
-
-async function main() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+    tools: {
+      shell: openai.tools.shell({
+        execute: async ({ action }) => {
+          const results = await Promise.all(
+            action.commands.map(async (command: string) => {
+              const output = await executeCommand(command);
+              const isError = output.startsWith('Error:');
+              return {
+                stdout: isError ? '' : output,
+                stderr: isError ? output : '',
+                outcome: { type: 'exit' as const, exitCode: isError ? 1 : 0 },
+              };
+            })
+          );
+          return { output: results };
+        },
+      }),
+      search_datasource: searchDatasource,
+      create_page: createPage,
+    },
+    experimental_telemetry: { isEnabled: true },
   });
-
-  const messages: { role: 'user' | 'assistant'; content: string }[] = [];
-
-  console.log('Unified Agent (Notion + Podcast)');
-
-  const prompt = (query: string): Promise<string> => new Promise((resolve) => rl.question(query, resolve));
-
-  while (true) {
-    const userInput = await prompt('You: ');
-    if (userInput.toLowerCase() === 'quit') break;
-
-    messages.push({ role: 'user', content: userInput });
-
-    process.stdout.write('\nAssistant: ');
-
-    try {
-      const result = await unifiedAgent.stream({
-        messages,
-      });
-
-      let fullText = '';
-      for await (const chunk of result.textStream) {
-        process.stdout.write(chunk);
-        fullText += chunk;
-      }
-
-      console.log('\n');
-
-      messages.push({ role: 'assistant', content: fullText });
-    } catch (error) {
-      console.error('\n[ERROR]:', error);
-    }
-  }
-
-  rl.close();
 }
 
-main();
+// CLI-specific code (only runs when executed directly, not when imported)
+if (require.main === module) {
+  // Initialize OpenTelemetry for CLI
+  const sdk = new NodeSDK({
+    spanProcessors: [new LangfuseSpanProcessor()],
+  });
+
+  sdk.start();
+
+  // Start CLI
+  async function main() {
+    const unifiedAgent = createUnifiedAgent();
+
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    const messages: { role: 'user' | 'assistant'; content: string }[] = [];
+
+    console.log('Unified Agent (Notion + Podcast)');
+
+    const prompt = (query: string): Promise<string> =>
+      new Promise((resolve) => rl.question(query, resolve));
+
+    while (true) {
+      const userInput = await prompt('You: ');
+      if (userInput.toLowerCase() === 'quit') break;
+
+      messages.push({ role: 'user', content: userInput });
+
+      process.stdout.write('\nAssistant: ');
+
+      try {
+        const result = await unifiedAgent.stream({
+          messages,
+        });
+
+        let fullText = '';
+        for await (const chunk of result.textStream) {
+          process.stdout.write(chunk);
+          fullText += chunk;
+        }
+
+        console.log('\n');
+
+        messages.push({ role: 'assistant', content: fullText });
+      } catch (error) {
+        console.error('\n[ERROR]:', error);
+      }
+    }
+
+    rl.close();
+  }
+
+  main();
+}

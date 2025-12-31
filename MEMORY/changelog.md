@@ -1,8 +1,15 @@
 # Project Changelog
 
-Last Updated: 2025-12-30
+Last Updated: 2025-12-31
 
 ## Recent Changes
+
+### 2025-12-31: Conversation Persistence Refactor (localStorage → SQLite)
+- Migrated conversation storage from browser localStorage to server-side SQLite using `@libsql/client`
+- Implemented AI SDK `toUIMessageStreamResponse()` with `onFinish` callback for message persistence
+- Created API routes: `/api/conversations` (list/create), `/api/conversations/[id]` (get/update/delete), `/api/migrate` (one-time localStorage migration)
+- Refactored frontend to use AI SDK's `useChat` hook with `setMessages` sync for conversation switching
+- Added `tool-card.tsx` component for displaying tool invocations with expandable input/output
 
 ### 2025-12-30: Next.js Frontend with Lovable-generated UI Integration
 - Integrated Lovable-generated Vite+React UI into Next.js App Router architecture

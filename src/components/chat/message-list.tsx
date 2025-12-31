@@ -2,10 +2,10 @@ import { useEffect, useRef } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageItem } from './message-item';
-import { Message } from '@/lib/types';
+import type { UIMessage } from 'ai';
 
 interface MessageListProps {
-  messages: Message[];
+  messages: UIMessage[];
   isStreaming: boolean;
   onSendSuggestion?: (text: string) => void;
 }

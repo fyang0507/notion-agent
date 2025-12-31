@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Conversation, ConversationGroup } from '@/lib/types';
+import { Conversation, ConversationGroup } from '@/hooks/use-conversations';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {

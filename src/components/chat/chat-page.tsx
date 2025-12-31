@@ -1,16 +1,18 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Menu, Sun, Moon, X, PanelLeftClose, PanelLeft } from 'lucide-react';
+'use client';
+
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Sun, Moon, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sidebar } from './sidebar';
 import { MessageList } from './message-list';
 import { InputArea } from './input-area';
 import { useConversations } from '@/hooks/use-conversations';
-import { useChat } from '@/hooks/use-chat';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
 import { useTheme } from '@/hooks/use-theme';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
 
 export function ChatPage() {
   const isMobile = useIsMobile();
@@ -32,22 +34,62 @@ export function ChatPage() {
   const {
     currentConversation,
     currentConversationId,
+    currentMessages,
     createConversation,
     switchConversation,
     deleteConversation,
     renameConversation,
-    addMessage,
-    updateLastMessage,
+    refreshConversations,
     getGroupedConversations,
   } = useConversations();
 
-  const messages = currentConversation?.messages || [];
+  // One-time migration from localStorage to server
+  useEffect(() => {
+    const stored = localStorage.getItem('notion-assistant-conversations');
+    if (stored) {
+      fetch('/api/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: stored,
+      })
+        .then((res) => res.json())
+        .then((result) => {
+          if (result.success) {
+            localStorage.removeItem('notion-assistant-conversations');
+            // Refresh to show migrated conversations
+            refreshConversations();
+          }
+        })
+        .catch(console.error);
+    }
+  }, [refreshConversations]);
 
-  const { isStreaming, sendMessage, stopGeneration } = useChat({
-    onAddMessage: addMessage,
-    onUpdateLastMessage: updateLastMessage,
-    messages,
+  // Create transport with conversation ID in body
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: '/api/chat',
+        body: { conversationId: currentConversationId },
+      }),
+    [currentConversationId]
+  );
+
+  // AI SDK useChat hook
+  const { messages, sendMessage, setMessages, status, stop } = useChat({
+    id: currentConversationId || undefined,
+    transport,
+    onFinish: () => {
+      // Refresh conversations to get updated title
+      refreshConversations();
+    },
   });
+
+  // Sync messages when conversation changes (currentMessages is loaded from API)
+  useEffect(() => {
+    setMessages(currentMessages);
+  }, [currentMessages, setMessages]);
+
+  const isStreaming = status === 'streaming' || status === 'submitted';
 
   const handleTranscription = useCallback((text: string) => {
     setTranscribedText(text);
@@ -63,8 +105,8 @@ export function ChatPage() {
     stopRecording,
   } = useVoiceRecorder({ onTranscription: handleTranscription });
 
-  const handleNewChat = () => {
-    createConversation();
+  const handleNewChat = async () => {
+    await createConversation();
     if (isMobile) setSidebarOpen(false);
   };
 
@@ -73,8 +115,20 @@ export function ChatPage() {
     if (isMobile) setSidebarOpen(false);
   };
 
+  const handleSend = async (content: string) => {
+    if (!content.trim()) return;
+
+    // Create conversation if needed
+    if (!currentConversationId) {
+      await createConversation();
+    }
+
+    // Send the message
+    sendMessage({ text: content });
+  };
+
   const handleSendSuggestion = (text: string) => {
-    sendMessage(text);
+    handleSend(text);
   };
 
   const groups = getGroupedConversations();
@@ -156,16 +210,16 @@ export function ChatPage() {
         </header>
 
         {/* Messages */}
-        <MessageList 
-          messages={messages} 
-          isStreaming={isStreaming} 
+        <MessageList
+          messages={messages}
+          isStreaming={isStreaming}
           onSendSuggestion={handleSendSuggestion}
         />
 
         {/* Input */}
         <InputArea
-          onSend={sendMessage}
-          onStop={stopGeneration}
+          onSend={handleSend}
+          onStop={stop}
           isStreaming={isStreaming}
           isRecording={isRecording}
           isTranscribing={isTranscribing}
