@@ -150,7 +150,7 @@ export function Sidebar({
                               {conv.title}
                             </span>
                           </button>
-                          <div className="absolute right-1 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-muted/90 backdrop-blur-sm rounded-md p-0.5">
                             <Button
                               size="icon"
                               variant="ghost"
@@ -158,7 +158,8 @@ export function Sidebar({
                                 e.stopPropagation();
                                 handleStartEdit(conv);
                               }}
-                              className="h-7 w-7"
+                              className="h-6 w-6 hover:bg-accent"
+                              aria-label="Rename conversation"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -169,7 +170,8 @@ export function Sidebar({
                                 e.stopPropagation();
                                 setDeleteId(conv.id);
                               }}
-                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              aria-label="Delete conversation"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>

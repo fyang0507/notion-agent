@@ -16,7 +16,13 @@ export function ChatPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [transcribedText, setTranscribedText] = useState<string | undefined>();
+  const [mounted, setMounted] = useState(false);
   const { theme, toggleTheme } = useTheme();
+
+  // Track mount state to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close sidebar on mobile by default
   useEffect(() => {
@@ -130,17 +136,21 @@ export function ChatPage() {
                 variant="ghost"
                 size="icon"
                 onClick={toggleTheme}
-                aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+                aria-label={mounted ? `Switch to ${theme === 'light' ? 'dark' : 'light'} mode` : 'Toggle theme'}
               >
-                {theme === 'light' ? (
-                  <Moon className="h-5 w-5" />
+                {mounted ? (
+                  theme === 'light' ? (
+                    <Moon className="h-5 w-5" />
+                  ) : (
+                    <Sun className="h-5 w-5" />
+                  )
                 ) : (
                   <Sun className="h-5 w-5" />
                 )}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              <p>Switch to {theme === 'light' ? 'dark' : 'light'} mode</p>
+              <p>{mounted ? `Switch to ${theme === 'light' ? 'dark' : 'light'} mode` : 'Toggle theme'}</p>
             </TooltipContent>
           </Tooltip>
         </header>

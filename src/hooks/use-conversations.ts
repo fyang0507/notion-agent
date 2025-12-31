@@ -85,13 +85,16 @@ export function useConversations() {
     // Use the ref for synchronous access to current conversation ID
     const activeConversationId = currentIdRef.current;
 
+    // Track if we need to update currentConversationId after setConversations
+    let newConversationId: string | null = null;
+
     setConversations(prev => {
       // If no current conversation, find an empty one or create new
       if (!activeConversationId) {
         const existingEmpty = prev.find(c => c.messages.length === 0);
         if (existingEmpty) {
-          // Use existing empty conversation
-          setCurrentConversationId(existingEmpty.id);
+          // Use existing empty conversation - track the ID to set after
+          newConversationId = existingEmpty.id;
           currentIdRef.current = existingEmpty.id;
           return prev.map(c => {
             if (c.id !== existingEmpty.id) return c;
@@ -103,7 +106,7 @@ export function useConversations() {
             };
           });
         }
-        
+
         // Create new conversation
         const newConversation: Conversation = {
           id: generateId(),
@@ -112,14 +115,15 @@ export function useConversations() {
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
-        setCurrentConversationId(newConversation.id);
+        // Track the ID to set after
+        newConversationId = newConversation.id;
         currentIdRef.current = newConversation.id;
         return [newConversation, ...prev];
       }
 
       return prev.map(c => {
         if (c.id !== activeConversationId) return c;
-        
+
         const updated = {
           ...c,
           messages: [...c.messages, newMessage],
@@ -133,6 +137,11 @@ export function useConversations() {
         return updated;
       });
     });
+
+    // Set currentConversationId outside setConversations to ensure proper batching
+    if (newConversationId) {
+      setCurrentConversationId(newConversationId);
+    }
 
     return newMessage;
   }, []);

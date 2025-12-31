@@ -71,15 +71,6 @@ export function InputArea({
             "transition-shadow duration-200"
           )}
         >
-          <VoiceRecorder
-            isRecording={isRecording}
-            isTranscribing={isTranscribing}
-            formattedDuration={formattedDuration}
-            onStartRecording={onStartRecording}
-            onStopRecording={onStopRecording}
-            disabled={isStreaming}
-          />
-          
           <Textarea
             ref={textareaRef}
             value={input}
@@ -94,7 +85,16 @@ export function InputArea({
             )}
             rows={1}
           />
-          
+
+          <VoiceRecorder
+            isRecording={isRecording}
+            isTranscribing={isTranscribing}
+            formattedDuration={formattedDuration}
+            onStartRecording={onStartRecording}
+            onStopRecording={onStopRecording}
+            disabled={isStreaming}
+          />
+
           {isStreaming ? (
             <Button
               type="button"
