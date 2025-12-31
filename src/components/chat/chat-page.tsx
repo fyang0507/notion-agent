@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Sun, Moon, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
@@ -20,6 +20,14 @@ export function ChatPage() {
   const [transcribedText, setTranscribedText] = useState<string | undefined>();
   const [mounted, setMounted] = useState(false);
   const { theme, toggleTheme } = useTheme();
+
+  // Track the active chat ID for useChat - separate from currentConversationId
+  // to avoid race conditions when creating new conversations
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  // Track if we're in the process of sending a new conversation's first message
+  const isCreatingConversationRef = useRef(false);
+  // Trigger to auto-focus the input area
+  const [autoFocusTrigger, setAutoFocusTrigger] = useState(0);
 
   // Track mount state to avoid hydration mismatch
   useEffect(() => {
@@ -44,6 +52,14 @@ export function ChatPage() {
     getGroupedConversations,
   } = useConversations();
 
+  // Sync activeChatId when currentConversationId changes from user actions
+  // (selecting a conversation or clearing for new chat)
+  useEffect(() => {
+    if (!isCreatingConversationRef.current) {
+      setActiveChatId(currentConversationId);
+    }
+  }, [currentConversationId]);
+
   // One-time migration from localStorage to server
   useEffect(() => {
     const stored = localStorage.getItem('notion-assistant-conversations');
@@ -65,29 +81,38 @@ export function ChatPage() {
     }
   }, [refreshConversations]);
 
-  // Create transport with conversation ID in body
+  // Track conversation ID for API calls - use ref to avoid transport recreation during send
+  const activeConvIdRef = useRef<string | null>(activeChatId);
+  activeConvIdRef.current = activeChatId;
+
+  // Create transport - uses ref to always get current conversation ID
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: '/api/chat',
-        body: { conversationId: currentConversationId },
+        // Body will be overridden by sendMessage options
       }),
-    [currentConversationId]
+    []
   );
 
-  // AI SDK useChat hook
+  // AI SDK useChat hook - use constant id to maintain stable message state
   const { messages, sendMessage, setMessages, status, stop } = useChat({
-    id: currentConversationId || undefined,
+    id: 'main-chat',
     transport,
     onFinish: () => {
       // Refresh conversations to get updated title
       refreshConversations();
+      // Clear the creating flag after the response is complete
+      isCreatingConversationRef.current = false;
     },
   });
 
   // Sync messages when conversation changes (currentMessages is loaded from API)
+  // Skip syncing during conversation creation to avoid clearing the sent message
   useEffect(() => {
-    setMessages(currentMessages);
+    if (!isCreatingConversationRef.current) {
+      setMessages(currentMessages);
+    }
   }, [currentMessages, setMessages]);
 
   const isStreaming = status === 'streaming' || status === 'submitted';
@@ -110,11 +135,17 @@ export function ChatPage() {
     // Clear current conversation - no DB creation yet
     // Conversation will be created lazily when user sends first message
     clearCurrentConversation();
+    // Clear messages in useChat since we're using a constant id
+    setMessages([]);
+    // Auto-focus the input area
+    setAutoFocusTrigger(prev => prev + 1);
     if (isMobile) setSidebarOpen(false);
   };
 
   const handleSelectConversation = (id: string) => {
     switchConversation(id);
+    // Auto-focus the input area
+    setAutoFocusTrigger(prev => prev + 1);
     if (isMobile) setSidebarOpen(false);
   };
 
@@ -122,16 +153,20 @@ export function ChatPage() {
     if (!content.trim()) return;
 
     // Create conversation lazily on first message
-    let convId = currentConversationId;
+    let convId = activeChatId;
     if (!convId) {
+      // Mark that we're creating a new conversation to prevent message sync from clearing
+      isCreatingConversationRef.current = true;
       const newConv = await createConversation();
       convId = newConv.id;
+      // Set activeChatId synchronously BEFORE sendMessage so useChat uses the right ID
+      setActiveChatId(convId);
     }
 
     // Send message with explicit conversationId in options.body
     sendMessage(
       { text: content },
-      { body: { conversationId: convId } }  // CORRECT: Second parameter
+      { body: { conversationId: convId } }
     );
   };
 
@@ -235,6 +270,7 @@ export function ChatPage() {
           onStartRecording={startRecording}
           onStopRecording={stopRecording}
           transcribedText={transcribedText}
+          autoFocusTrigger={autoFocusTrigger}
         />
       </div>
     </div>

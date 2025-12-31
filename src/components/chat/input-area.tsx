@@ -15,6 +15,7 @@ interface InputAreaProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   transcribedText?: string;
+  autoFocusTrigger?: number; // Increment to trigger focus
 }
 
 export function InputArea({
@@ -27,9 +28,17 @@ export function InputArea({
   onStartRecording,
   onStopRecording,
   transcribedText,
+  autoFocusTrigger,
 }: InputAreaProps) {
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus textarea when autoFocusTrigger changes
+  useEffect(() => {
+    if (autoFocusTrigger && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [autoFocusTrigger]);
 
   useEffect(() => {
     if (transcribedText) {
