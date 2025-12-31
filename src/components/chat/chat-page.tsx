@@ -37,6 +37,7 @@ export function ChatPage() {
     currentMessages,
     createConversation,
     switchConversation,
+    clearCurrentConversation,
     deleteConversation,
     renameConversation,
     refreshConversations,
@@ -105,8 +106,10 @@ export function ChatPage() {
     stopRecording,
   } = useVoiceRecorder({ onTranscription: handleTranscription });
 
-  const handleNewChat = async () => {
-    await createConversation();
+  const handleNewChat = () => {
+    // Clear current conversation - no DB creation yet
+    // Conversation will be created lazily when user sends first message
+    clearCurrentConversation();
     if (isMobile) setSidebarOpen(false);
   };
 
@@ -118,13 +121,18 @@ export function ChatPage() {
   const handleSend = async (content: string) => {
     if (!content.trim()) return;
 
-    // Create conversation if needed
-    if (!currentConversationId) {
-      await createConversation();
+    // Create conversation lazily on first message
+    let convId = currentConversationId;
+    if (!convId) {
+      const newConv = await createConversation();
+      convId = newConv.id;
     }
 
-    // Send the message
-    sendMessage({ text: content });
+    // Send message with explicit conversationId in options.body
+    sendMessage(
+      { text: content },
+      { body: { conversationId: convId } }  // CORRECT: Second parameter
+    );
   };
 
   const handleSendSuggestion = (text: string) => {

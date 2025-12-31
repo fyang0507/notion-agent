@@ -105,7 +105,7 @@ export function Sidebar({
                     <div
                       key={conv.id}
                       className={cn(
-                        "group relative flex items-center rounded-lg",
+                        "group relative flex items-center rounded-lg max-w-full",
                         currentConversationId === conv.id
                           ? "bg-sidebar-accent"
                           : "hover:bg-sidebar-accent/50"
@@ -144,13 +144,13 @@ export function Sidebar({
                         <>
                           <button
                             onClick={() => onSelectConversation(conv.id)}
-                            className="flex-1 px-3 py-2 text-left"
+                            className="flex-1 px-3 py-2 text-left min-w-0"
                           >
-                            <span className="block truncate text-sm text-sidebar-foreground">
+                            <span className="block truncate text-sm text-sidebar-foreground pr-16">
                               {conv.title}
                             </span>
                           </button>
-                          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-muted/90 backdrop-blur-sm rounded-md p-0.5">
+                          <div className="absolute left-[160px] top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-muted/90 backdrop-blur-sm rounded-md p-0.5 shrink-0">
                             <Button
                               size="icon"
                               variant="ghost"

@@ -74,6 +74,11 @@ export function useConversations() {
     setCurrentConversationId(id);
   }, []);
 
+  const clearCurrentConversation = useCallback(() => {
+    setCurrentConversationId(null);
+    setCurrentMessages([]);  // This triggers welcome screen (MessageList shows welcome when messages.length === 0)
+  }, []);
+
   const deleteConversation = useCallback(
     async (id: string) => {
       await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
@@ -153,6 +158,7 @@ export function useConversations() {
     isLoading,
     createConversation,
     switchConversation,
+    clearCurrentConversation,
     deleteConversation,
     renameConversation,
     refreshConversations,

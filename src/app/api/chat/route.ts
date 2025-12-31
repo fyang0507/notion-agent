@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 interface ChatRequestBody {
-  conversationId: string;
+  conversationId?: string;  // From sendMessage options.body OR transport body
   messages: UIMessage[];
 }
 
