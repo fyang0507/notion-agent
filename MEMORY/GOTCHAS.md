@@ -1,19 +1,17 @@
 # GOTCHAS
 
-## LangFuse Telemetry
-When using Langfuse on individual agent level, we added the following snippet to the code:
-```ts
-import { NodeSDK } from "@opentelemetry/sdk-node";
-import { LangfuseSpanProcessor } from "@langfuse/otel";
- 
-const sdk = new NodeSDK({
-  spanProcessors: [new LangfuseSpanProcessor()],
-});
-```
+## LangFuse Telemetry Issue
+Langfuse observability in this app should be enabled under 2 scnarios:
+1. CLI agent (src/agents/index.ts)
+2. Next.js app (through instrumentation.ts)
 
-This is only used for dev purpose only to evaluate individual agent.
+Main issues now:
+A. for CLI running, the traceID is not correctly set such that multi-turn dialogs will be logged as multiple traces.
+B. the instrumentation.ts is broken, Langfuse and Vercel each offers different recipe, but neither works.
 
-When the whole app is setup. Officially, [an `instrumentation.ts` file should be set up](https://langfuse.com/integrations/frameworks/vercel-ai-sdk#setup-with-nextjs) so the telemetry service can be registered when Next.js app starts up. 
+References:
+- [Vercel's integration guide](https://ai-sdk.dev/providers/observability/langfuse) 
+- [Langfuse's integration guide](https://langfuse.com/integrations/frameworks/vercel-ai-sdk)
 
 ## Building a Notion Skill without Notion MCP
 I decided not to build with Notion MCP. Reasons:

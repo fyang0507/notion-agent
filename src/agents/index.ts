@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { ToolLoopAgent } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import * as readline from 'readline';
+import { fileURLToPath } from 'url';
 import { searchDatasource } from '@/skills/notion/tools/search-datasource';
 import { createPage } from '@/skills/notion/tools/create-page';
 import { getSkillList, createNotionCommands } from '@/skills/notion/index';
@@ -10,11 +11,16 @@ import { createCommandExecutor } from './utils/shell-executor';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
 
+interface AgentOptions {
+  /** Session ID for grouping conversation traces in Langfuse */
+  traceId?: string;
+}
+
 /**
  * Factory function for creating the unified agent.
  * Used by both web (imported) and CLI (direct execution).
  */
-export function createUnifiedAgent() {
+export function createUnifiedAgent(options?: AgentOptions) {
   const executeCommand = createCommandExecutor({
     ...createNotionCommands(),
     ...createPodcastCommands(),
@@ -93,22 +99,27 @@ When the user asks for podcast recommendations:
       search_datasource: searchDatasource,
       create_page: createPage,
     },
-    experimental_telemetry: { isEnabled: true },
+    experimental_telemetry: {
+      isEnabled: true,
+      metadata: options?.traceId ? { langfusetraceId: options.traceId } : undefined,
+    },
   });
 }
 
 // CLI-specific code (only runs when executed directly, not when imported)
-if (require.main === module) {
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMainModule) {
   // Initialize OpenTelemetry for CLI
   const sdk = new NodeSDK({
     spanProcessors: [new LangfuseSpanProcessor()],
   });
-
+  
   sdk.start();
 
   // Start CLI
   async function main() {
-    const unifiedAgent = createUnifiedAgent();
+    const traceId = crypto.randomUUID();
+    const unifiedAgent = createUnifiedAgent({ traceId });
 
     const rl = readline.createInterface({
       input: process.stdin,

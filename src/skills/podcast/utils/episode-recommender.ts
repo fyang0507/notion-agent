@@ -4,14 +4,6 @@ import * as TOML from '@iarna/toml';
 import { generateText } from 'ai';
 import { fetchAllEpisodes, type Episode } from './rss-fetcher';
 import { RECOMMENDATION_CONFIG } from '../config/recommendation-config';
-import { NodeSDK } from "@opentelemetry/sdk-node";
-import { LangfuseSpanProcessor } from "@langfuse/otel";
- 
-const sdk = new NodeSDK({
-  spanProcessors: [new LangfuseSpanProcessor()],
-});
- 
-sdk.start();
 
 const PODCASTS_PATH = path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'podcasts.toml');
 
