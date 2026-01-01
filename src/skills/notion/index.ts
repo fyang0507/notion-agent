@@ -8,6 +8,7 @@ import {
   getDraftsDir,
   getDatasourceByName,
 } from './utils/datasource-store';
+import { syncFileToGitHub } from '../../lib/github-sync';
 
 export interface SkillMetadata {
   name: string;
@@ -190,6 +191,9 @@ export function commitSkill(name: string): SkillWriteResult {
   // Copy draft to active location
   const content = fs.readFileSync(draftFile, 'utf-8');
   fs.writeFileSync(targetFile, content, 'utf-8');
+
+  // Sync to GitHub (fire-and-forget)
+  syncFileToGitHub(targetFile, content);
 
   // Remove draft
   fs.rmSync(draftPath, { recursive: true });

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as TOML from '@iarna/toml';
+import { syncFileToGitHub } from '../../../lib/github-sync';
 
 // New base path for all notion datasources
 const DATASOURCES_BASE = path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'notion', 'datasources');
@@ -125,7 +126,11 @@ export function saveDatasource(datasource: Datasource): { success: boolean; mess
   const isUpdate = fs.existsSync(schemaPath);
 
   // Write schema.toml
-  fs.writeFileSync(schemaPath, TOML.stringify(datasource as unknown as TOML.JsonMap));
+  const content = TOML.stringify(datasource as unknown as TOML.JsonMap);
+  fs.writeFileSync(schemaPath, content);
+
+  // Sync to GitHub (fire-and-forget)
+  syncFileToGitHub(schemaPath, content);
 
   return {
     success: true,

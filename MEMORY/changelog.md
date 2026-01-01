@@ -1,8 +1,14 @@
 # Project Changelog
 
-Last Updated: 2025-12-31
+Last Updated: 2026-01-01
 
 ## Recent Changes
+
+### 2026-01-01: Vercel Deployment Prep & GitHub Sync for AGENT_WORKING_FOLDER
+- Made Langfuse telemetry conditional (skips init when `LANGFUSE_SECRET_KEY`/`LANGFUSE_PUBLIC_KEY` not set)
+- Created `src/lib/github-sync.ts` using Octokit to sync files to `vercel-agent-commit` branch (fire-and-forget with error logging)
+- Added sync hooks to `toml-writer.ts`, `datasource-store.ts`, `notion/index.ts` for podcasts.toml, schema.toml, SKILL.md
+- Created idempotent test script `scripts/test-github-sync.ts` that creates, syncs, verifies, and cleans up test files
 
 ### 2025-12-31: Conversation Persistence Refactor (localStorage → SQLite)
 - Migrated conversation storage from browser localStorage to server-side SQLite using `@libsql/client`

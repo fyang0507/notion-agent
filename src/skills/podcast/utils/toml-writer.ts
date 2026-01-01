@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as TOML from '@iarna/toml';
+import { syncFileToGitHub } from '../../../lib/github-sync';
 
 const OUTPUT_PATH = path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'podcasts.toml');
 
@@ -31,5 +32,9 @@ export function appendPodcast(name: string, feedUrl: string): void {
   data.podcasts.push({ name, feedUrl });
 
   // Write back
-  fs.writeFileSync(OUTPUT_PATH, TOML.stringify(data as any));
+  const content = TOML.stringify(data as any);
+  fs.writeFileSync(OUTPUT_PATH, content);
+
+  // Sync to GitHub (fire-and-forget)
+  syncFileToGitHub(OUTPUT_PATH, content);
 }

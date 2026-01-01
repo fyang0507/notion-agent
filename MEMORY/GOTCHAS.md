@@ -11,6 +11,7 @@ B. the instrumentation.ts is broken, Langfuse and Vercel each offers different r
 
 References:
 - [Vercel's integration guide](https://ai-sdk.dev/providers/observability/langfuse) 
+  - the tutorial uses deprecated `langfuse-vercel`
 - [Langfuse's integration guide](https://langfuse.com/integrations/frameworks/vercel-ai-sdk)
 
 ## Building a Notion Skill without Notion MCP

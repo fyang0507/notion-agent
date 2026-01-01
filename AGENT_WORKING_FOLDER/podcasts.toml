@@ -9,3 +9,11 @@ feedUrl = "https://anchor.fm/s/f58d3330/podcast/rss"
 [[podcasts]]
 name = "一席"
 feedUrl = "https://feed.xyzfm.space/jq7xytwpykrg"
+
+[[podcasts]]
+name = "Decoder with Nilay Patel"
+feedUrl = "https://feeds.megaphone.fm/recodedecode"
+
+[[podcasts]]
+name = "The a16z Show"
+feedUrl = "https://feeds.simplecast.com/JGE3yC0V"
