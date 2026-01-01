@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Copy, Check, Bot, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -41,14 +41,43 @@ export function MessageItem({ message, isStreaming }: MessageItemProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const renderTextContent = (content: string) => {
-    const parts = content.split(/(```[\s\S]*?```|\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+  const renderInlineFormatting = (text: string, keyPrefix: string): React.ReactNode[] => {
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
 
     return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={`${keyPrefix}-${index}`}>{part.slice(2, -2)}</strong>;
+      }
+
+      if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+        return <em key={`${keyPrefix}-${index}`}>{part.slice(1, -1)}</em>;
+      }
+
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return (
+          <code
+            key={`${keyPrefix}-${index}`}
+            className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+
+      return <span key={`${keyPrefix}-${index}`}>{part}</span>;
+    });
+  };
+
+  const renderTextContent = (content: string) => {
+    // First, split by code blocks
+    const codeBlockParts = content.split(/(```[\s\S]*?```)/g);
+
+    return codeBlockParts.map((part, partIndex) => {
+      // Handle code blocks
       if (part.startsWith('```') && part.endsWith('```')) {
         const code = part.slice(3, -3).replace(/^\w+\n/, '');
         return (
-          <div key={index} className="relative my-3 group">
+          <div key={partIndex} className="relative my-3 group">
             <pre className="overflow-x-auto rounded-lg bg-muted p-4 text-sm">
               <code>{code}</code>
             </pre>
@@ -64,40 +93,45 @@ export function MessageItem({ message, isStreaming }: MessageItemProps) {
         );
       }
 
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={index}>{part.slice(2, -2)}</strong>;
-      }
+      // Handle regular text: split by lines first, then apply inline formatting
+      const lines = part.split('\n');
+      return lines.map((line, lineIndex) => {
+        const key = `${partIndex}-${lineIndex}`;
 
-      if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
-        return <em key={index}>{part.slice(1, -1)}</em>;
-      }
-
-      if (part.startsWith('`') && part.endsWith('`') && !part.startsWith('```')) {
-        return (
-          <code key={index} className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">
-            {part.slice(1, -1)}
-          </code>
-        );
-      }
-
-      // Handle line breaks and lists
-      return part.split('\n').map((line, lineIndex) => {
-        const listMatch = line.match(/^(\d+\.|[-]) (.+)/);
-        if (listMatch) {
+        // Check for ordered list items (1. 2. etc) - allow leading whitespace
+        const orderedMatch = line.match(/^\s*(\d+)\.\s+(.+)/);
+        if (orderedMatch) {
           return (
-            <div key={`${index}-${lineIndex}`} className="flex gap-2 my-0.5">
-              <span className="text-muted-foreground">{listMatch[1]}</span>
-              <span>{listMatch[2]}</span>
+            <div key={key} className="flex gap-2.5 py-1">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary leading-none">
+                {orderedMatch[1]}
+              </span>
+              <span className="flex-1 leading-relaxed">{renderInlineFormatting(orderedMatch[2], key)}</span>
             </div>
           );
         }
-        return lineIndex > 0 ? (
-          <span key={`${index}-${lineIndex}`}>
-            <br />
-            {line}
+
+        // Check for unordered list items - match various dash/bullet characters
+        const unorderedMatch = line.match(/^\s*[-–—•*]\s+(.+)/);
+        if (unorderedMatch) {
+          return (
+            <div key={key} className="flex gap-2.5 py-0.5">
+              <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
+              <span className="flex-1 leading-relaxed">{renderInlineFormatting(unorderedMatch[1], key)}</span>
+            </div>
+          );
+        }
+
+        // Regular line with optional line break
+        if (line.trim() === '') {
+          return <br key={key} />;
+        }
+
+        return (
+          <span key={key}>
+            {lineIndex > 0 && lines[lineIndex - 1].trim() !== '' && <br />}
+            {renderInlineFormatting(line, key)}
           </span>
-        ) : (
-          <span key={`${index}-${lineIndex}`}>{line}</span>
         );
       });
     });
