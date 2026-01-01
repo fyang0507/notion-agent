@@ -1,44 +1,54 @@
-# Vercel Deployment & GitHub Sync Implementation
+# Vercel Deployment & Agent Filesystem Abstraction
 
 Last Updated: 2026-01-01
 
 ## Overview
 
-Prepared the app for Vercel deployment with two key features:
-1. Conditional Langfuse telemetry (disabled when credentials not present)
-2. GitHub sync for AGENT_WORKING_FOLDER (agent writes → GitHub commit)
+Solved Vercel's read-only filesystem limitation with an environment-aware abstraction layer (`agent-fs`) that:
+- Local development: Uses direct filesystem operations
+- Vercel deployment: Uses GitHub API to read/write to `vercel-agent-commit` branch
 
 ## Architecture
 
-### GitHub Sync Flow
+### Agent-FS Flow
 ```
-Agent writes file locally
-       ↓
-fs.writeFileSync(path, content)
-       ↓
-syncFileToGitHub(path, content).catch(console.error)  // fire-and-forget
-       ↓
-GitHub API creates/updates file on vercel-agent-commit branch
-       ↓
-Vercel detects commit → auto-redeploy (if configured)
+agentFS()  →  isVercelWithGitHub()?
+                    ↓
+    ┌───────────────┴───────────────┐
+    │ Yes                           │ No
+    ↓                               ↓
+githubFS                        localFS
+(Octokit → GitHub API)      (fs → filesystem)
 ```
 
 ### Key Design Decisions
-- **Fire-and-forget**: Sync doesn't block agent response; errors logged to console
-- **Dedicated branch**: `vercel-agent-commit` keeps main clean for review/merge
-- **Auto-branch creation**: Uses repo's default branch (not hardcoded "main")
-- **Graceful skip**: No-op when `GITHUB_TOKEN` or `GITHUB_REPO` not set
+- **Environment Detection**: `VERCEL` + `GITHUB_TOKEN` + `GITHUB_REPO` → GitHub backend
+- **Async-First**: All operations return Promises for consistent API
+- **Relative Paths**: All paths relative to `AGENT_WORKING_FOLDER`
+- **Singleton Pattern**: Single instance via `agentFS()` helper
+- **Transparent to Human**: Files visible in GitHub repo, not hidden in database
 
 ## Files Created/Modified
 
 | File | Purpose |
 |------|---------|
-| `src/lib/github-sync.ts` | Octokit-based sync utility |
-| `src/instrumentation.ts` | Conditional Langfuse init |
-| `src/skills/podcast/utils/toml-writer.ts` | Sync hook for podcasts.toml |
-| `src/skills/notion/utils/datasource-store.ts` | Sync hook for schema.toml |
-| `src/skills/notion/index.ts` | Sync hook for SKILL.md |
-| `scripts/test-github-sync.ts` | Idempotent test script |
+| `src/lib/agent-fs/types.ts` | AgentFS interface definition |
+| `src/lib/agent-fs/local.ts` | Local filesystem implementation |
+| `src/lib/agent-fs/github.ts` | GitHub API implementation |
+| `src/lib/agent-fs/index.ts` | Environment-aware factory |
+| `src/skills/podcast/utils/podcast-store.ts` | Consolidated podcast storage |
+
+### Removed Files
+- `src/lib/github-sync.ts` - Replaced by agent-fs
+- `src/skills/podcast/utils/toml-reader.ts` - Merged into podcast-store
+- `src/skills/podcast/utils/toml-writer.ts` - Merged into podcast-store
+
+### Updated Files
+- `src/agents/index.ts` - `createUnifiedAgent()` now async
+- `src/app/api/chat/route.ts` - Added await for createUnifiedAgent
+- `src/skills/notion/index.ts` - All skill functions now async
+- `src/skills/notion/utils/datasource-store.ts` - Async operations
+- `scripts/test-skills.ts` - Wrapped in async function
 
 ## Environment Variables (Vercel)
 
@@ -46,22 +56,23 @@ Vercel detects commit → auto-redeploy (if configured)
 |----------|---------|
 | `GITHUB_TOKEN` | Personal access token with `repo` scope |
 | `GITHUB_REPO` | Repository in `owner/repo` format |
-| `AI_GATEWAY_API_KEY` | OpenAI/AI provider key |
-| `GROQ_API_KEY` | Voice transcription (Whisper) |
-| `NOTION_TOKEN` | Notion API operations |
+| `VERCEL` | Auto-set by Vercel (detection trigger) |
 
-## Test Script
+## AgentFS Interface
 
-Run: `pnpm tsx scripts/test-github-sync.ts`
-
-The test is idempotent:
-1. Creates test file in `AGENT_WORKING_FOLDER/.test/`
-2. Syncs to GitHub on `vercel-agent-commit` branch
-3. Verifies content matches
-4. Deletes from GitHub and local
+```typescript
+interface AgentFS {
+  exists(relativePath: string): Promise<boolean>;
+  readFile(relativePath: string): Promise<string | null>;
+  writeFile(relativePath: string, content: string): Promise<void>;
+  readDir(relativePath: string): Promise<DirEntry[]>;
+  mkdir(relativePath: string): Promise<void>;
+  remove(relativePath: string): Promise<void>;
+}
+```
 
 ## Status
 
 - Implementation: Complete
-- Test: Requires valid `GITHUB_TOKEN` and `GITHUB_REPO` in `.env`
-- Deployment: Ready for Vercel with Turso integration
+- TypeScript: All checks pass
+- Deployment: Ready (add GITHUB_TOKEN, GITHUB_REPO to Vercel)

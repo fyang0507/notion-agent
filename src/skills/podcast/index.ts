@@ -1,28 +1,9 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as TOML from '@iarna/toml';
-import { checkAndDedup, type PodcastEntry } from './utils/toml-reader';
-import { appendPodcast } from './utils/toml-writer';
+import { loadPodcasts, checkAndDedup, appendPodcast } from './utils/podcast-store';
 import { recommendEpisodesFromFeeds } from './utils/episode-recommender';
-
-const PODCASTS_PATH = path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'podcasts.toml');
-
-interface PodcastsFile {
-  podcasts: PodcastEntry[];
-}
 
 // Detect Chinese characters for country selection
 function detectCountry(query: string): string {
   return /[\u4e00-\u9fff]/.test(query) ? 'CN' : 'US';
-}
-
-function loadPodcasts(): PodcastEntry[] {
-  if (!fs.existsSync(PODCASTS_PATH)) {
-    return [];
-  }
-  const content = fs.readFileSync(PODCASTS_PATH, 'utf-8');
-  const data = TOML.parse(content) as unknown as PodcastsFile;
-  return data.podcasts || [];
 }
 
 async function searchPodcast(query: string): Promise<string> {
@@ -44,9 +25,7 @@ async function searchPodcast(query: string): Promise<string> {
     return `No podcasts found for "${query}".`;
   }
 
-  return results
-    .map((r: any, i: number) => `${i + 1}. ${r.name} by ${r.artist}\n   Feed: ${r.feedUrl}`)
-    .join('\n\n');
+  return results.map((r: any, i: number) => `${i + 1}. ${r.name} by ${r.artist}\n   Feed: ${r.feedUrl}`).join('\n\n');
 }
 
 export type CommandHandler = (args: string) => string | Promise<string>;
@@ -69,8 +48,8 @@ Options for recommend:
   days=<number>     Days to look back (default: 90)
   criteria="<text>" Additional filtering criteria`,
 
-    'podcast list': () => {
-      const podcasts = loadPodcasts();
+    'podcast list': async () => {
+      const podcasts = await loadPodcasts();
       if (podcasts.length === 0) {
         return 'No podcasts saved yet.';
       }
@@ -94,19 +73,19 @@ Options for recommend:
       const [, name, feedUrl] = match;
 
       // Check for duplicate first
-      const dupCheck = checkAndDedup(name);
+      const dupCheck = await checkAndDedup(name);
       if (dupCheck.isDuplicate) {
         return `Error: ${dupCheck.message}`;
       }
 
-      appendPodcast(name, feedUrl);
+      await appendPodcast(name, feedUrl);
       return `Saved "${name}" to podcasts.toml`;
     },
 
     'podcast check': async (name) => {
       if (!name) return 'Error: Usage: podcast check <name>';
 
-      const result = checkAndDedup(name);
+      const result = await checkAndDedup(name);
       return result.message;
     },
 

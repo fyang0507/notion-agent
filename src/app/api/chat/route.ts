@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Messages array is required' }, { status: 400 });
     }
 
-    const agent = createUnifiedAgent({ traceId: conversationId });
+    const agent = await createUnifiedAgent({ traceId: conversationId });
 
     // Convert UIMessages to ModelMessages for the agent
     const modelMessages = await convertToModelMessages(inputMessages);

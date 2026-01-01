@@ -17,3 +17,7 @@ feedUrl = "https://feeds.megaphone.fm/recodedecode"
 [[podcasts]]
 name = "The a16z Show"
 feedUrl = "https://feeds.simplecast.com/JGE3yC0V"
+
+[[podcasts]]
+name = "Lenny's Podcast: Product | Career | Growth"
+feedUrl = "https://api.substack.com/feed/podcast/10845.rss"

@@ -66,7 +66,7 @@ Note: Local cache may become outdated. If you encounter schema errors in later o
   }) => {
     // Check cache first (unless forceRefresh is true)
     if (!forceRefresh) {
-      const cacheResult = checkCachedDatasource(query);
+      const cacheResult = await checkCachedDatasource(query);
       if (cacheResult.isCached && cacheResult.datasource) {
         return {
           success: true,
@@ -115,7 +115,7 @@ Note: Local cache may become outdated. If you encounter schema errors in later o
     const savedDatasources: Datasource[] = [];
     for (const ds of dataSources) {
       const datasource = await extractDatasourceWithLLM(ds);
-      saveDatasource(datasource);
+      await saveDatasource(datasource);
       savedDatasources.push(datasource);
     }
 
@@ -126,4 +126,3 @@ Note: Local cache may become outdated. If you encounter schema errors in later o
     };
   },
 });
-

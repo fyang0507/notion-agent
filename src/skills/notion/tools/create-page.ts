@@ -4,8 +4,8 @@ import { Client } from '@notionhq/client';
 import type { CreatePageParameters } from '@notionhq/client/build/src/api-endpoints';
 import { readDatasources, type Datasource } from '../utils/datasource-store';
 
-function findDatasourceByName(name: string): Datasource | undefined {
-  const datasources = readDatasources();
+async function findDatasourceByName(name: string): Promise<Datasource | undefined> {
+  const datasources = await readDatasources();
   const normalizedInput = name.toLowerCase().trim();
   return datasources.find((d) => d.name.toLowerCase().trim() === normalizedInput);
 }
@@ -34,7 +34,7 @@ export const createPage = tool({
     children?: Record<string, unknown>[];
   }) => {
     // Find the datasource
-    const datasource = findDatasourceByName(datasourceName);
+    const datasource = await findDatasourceByName(datasourceName);
     if (!datasource) {
       return {
         success: false,

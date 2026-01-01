@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { appendPodcast } from '../utils/toml-writer';
+import { appendPodcast } from '../utils/podcast-store';
 
 export const savePodcast = tool({
   description: 'Save a confirmed podcast to the local TOML file. Call this after the user confirms which podcast they want to save.',
@@ -9,7 +9,7 @@ export const savePodcast = tool({
     feedUrl: z.string().describe('The podcast RSS feed URL'),
   }),
   execute: async ({ name, feedUrl }: { name: string; feedUrl: string }) => {
-    appendPodcast(name, feedUrl);
+    await appendPodcast(name, feedUrl);
     return { success: true, message: `Saved "${name}" to podcasts.toml` };
   },
 });

@@ -1,14 +1,11 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import matter from 'gray-matter';
 import {
-  readDatasources,
-  getDatasourcePath,
   getSkillPath,
   getDraftsDir,
   getDatasourceByName,
+  listDatasourceNames,
 } from './utils/datasource-store';
-import { syncFileToGitHub } from '../../lib/github-sync';
+import { agentFS } from '../../lib/agent-fs';
 
 export interface SkillMetadata {
   name: string;
@@ -16,41 +13,21 @@ export interface SkillMetadata {
 }
 
 /**
- * Get the base path for all datasources
- */
-function getDatasourcesBase(): string {
-  return path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'notion', 'datasources');
-}
-
-/**
  * Scan the datasources directory and return metadata for all skills
  */
-export function scanSkills(): SkillMetadata[] {
-  // Trigger migration if needed
-  readDatasources();
-
-  const basePath = getDatasourcesBase();
-  if (!fs.existsSync(basePath)) {
-    return [];
-  }
-
-  const entries = fs.readdirSync(basePath, { withFileTypes: true });
+export async function scanSkills(): Promise<SkillMetadata[]> {
+  const fs = agentFS();
+  const datasourceNames = await listDatasourceNames();
   const skills: SkillMetadata[] = [];
 
-  for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name === '_drafts') {
-      continue;
-    }
+  for (const name of datasourceNames) {
+    const skillPath = getSkillPath(name);
+    const raw = await fs.readFile(skillPath);
 
-    const skillPath = path.join(basePath, entry.name, 'SKILL.md');
-    if (!fs.existsSync(skillPath)) {
-      continue;
-    }
+    if (!raw) continue;
 
     try {
-      const raw = fs.readFileSync(skillPath, 'utf-8');
       const { data } = matter(raw);
-
       if (data.name && data.description) {
         skills.push({
           name: data.name,
@@ -68,8 +45,8 @@ export function scanSkills(): SkillMetadata[] {
 /**
  * Get a formatted skill list for agent instructions
  */
-export function getSkillList(): string {
-  const skills = scanSkills();
+export async function getSkillList(): Promise<string> {
+  const skills = await scanSkills();
 
   if (skills.length === 0) {
     return `## Available Skills\nNo skills configured yet.`;
@@ -144,26 +121,15 @@ function validateSkillContent(content: string): { valid: boolean; error?: string
 /**
  * Create a draft skill in the _drafts/ directory
  */
-export function draftSkill(name: string, content: string): SkillWriteResult {
+export async function draftSkill(name: string, content: string): Promise<SkillWriteResult> {
   const validation = validateSkillContent(content);
   if (!validation.valid) {
     return { success: false, message: `Error: ${validation.error}` };
   }
 
-  const draftsDir = getDraftsDir();
-
-  // Ensure _drafts directory exists
-  if (!fs.existsSync(draftsDir)) {
-    fs.mkdirSync(draftsDir, { recursive: true });
-  }
-
-  const draftPath = path.join(draftsDir, name);
-  if (!fs.existsSync(draftPath)) {
-    fs.mkdirSync(draftPath, { recursive: true });
-  }
-
-  const skillFile = path.join(draftPath, 'SKILL.md');
-  fs.writeFileSync(skillFile, content, 'utf-8');
+  const fs = agentFS();
+  const draftPath = `${getDraftsDir()}/${name}/SKILL.md`;
+  await fs.writeFile(draftPath, content);
 
   return { success: true, message: `Draft saved for "${name}". Use 'notion show-draft "${name}"' to review.` };
 }
@@ -171,32 +137,22 @@ export function draftSkill(name: string, content: string): SkillWriteResult {
 /**
  * Commit a draft skill to the datasource directory
  */
-export function commitSkill(name: string): SkillWriteResult {
-  const draftsDir = getDraftsDir();
-  const draftPath = path.join(draftsDir, name);
-  const draftFile = path.join(draftPath, 'SKILL.md');
+export async function commitSkill(name: string): Promise<SkillWriteResult> {
+  const fs = agentFS();
+  const draftFile = `${getDraftsDir()}/${name}/SKILL.md`;
 
-  if (!fs.existsSync(draftFile)) {
+  const content = await fs.readFile(draftFile);
+  if (!content) {
     return { success: false, message: `Error: No draft found for "${name}". Use 'notion draft' first.` };
   }
 
-  const targetPath = getDatasourcePath(name);
   const targetFile = getSkillPath(name);
 
-  // Create target directory if needed (for skills without schemas)
-  if (!fs.existsSync(targetPath)) {
-    fs.mkdirSync(targetPath, { recursive: true });
-  }
-
-  // Copy draft to active location
-  const content = fs.readFileSync(draftFile, 'utf-8');
-  fs.writeFileSync(targetFile, content, 'utf-8');
-
-  // Sync to GitHub (fire-and-forget)
-  syncFileToGitHub(targetFile, content);
+  // Write to active location (agent-fs handles GitHub sync on Vercel)
+  await fs.writeFile(targetFile, content);
 
   // Remove draft
-  fs.rmSync(draftPath, { recursive: true });
+  await fs.remove(`${getDraftsDir()}/${name}`);
 
   return { success: true, message: `Skill "${name}" committed successfully.` };
 }
@@ -204,35 +160,33 @@ export function commitSkill(name: string): SkillWriteResult {
 /**
  * Discard a draft skill
  */
-export function discardDraft(name: string): SkillWriteResult {
-  const draftsDir = getDraftsDir();
-  const draftPath = path.join(draftsDir, name);
+export async function discardDraft(name: string): Promise<SkillWriteResult> {
+  const fs = agentFS();
+  const draftPath = `${getDraftsDir()}/${name}`;
 
-  if (!fs.existsSync(draftPath)) {
+  const exists = await fs.exists(draftPath);
+  if (!exists) {
     return { success: false, message: `Error: No draft found for "${name}".` };
   }
 
-  fs.rmSync(draftPath, { recursive: true });
+  await fs.remove(draftPath);
   return { success: true, message: `Draft "${name}" discarded.` };
 }
 
 /**
  * Read a draft skill's content
  */
-export function readDraft(name: string): string | null {
-  const draftsDir = getDraftsDir();
-  const draftFile = path.join(draftsDir, name, 'SKILL.md');
-  if (!fs.existsSync(draftFile)) {
-    return null;
-  }
-  return fs.readFileSync(draftFile, 'utf-8');
+export async function readDraft(name: string): Promise<string | null> {
+  const fs = agentFS();
+  const draftFile = `${getDraftsDir()}/${name}/SKILL.md`;
+  return fs.readFile(draftFile);
 }
 
 /**
  * Get datasource schema for a given name
  */
-export function getDatasourceSchema(name: string): string | null {
-  const datasource = getDatasourceByName(name);
+export async function getDatasourceSchema(name: string): Promise<string | null> {
+  const datasource = await getDatasourceByName(name);
 
   if (!datasource) {
     return null;
@@ -277,38 +231,42 @@ Required: YAML frontmatter with "name" and "description"
 Body: Freeform markdown with concise instructions for how to create entries`;
 }
 
-export type CommandHandler = (args: string) => string;
+export type CommandHandler = (args: string) => string | Promise<string>;
 
 /**
  * Create notion command handlers for the command executor
  */
 export function createNotionCommands(): Record<string, CommandHandler> {
-  const findSkill = (name: string) => {
-    const skills = scanSkills();
+  const findSkill = async (name: string) => {
+    const skills = await scanSkills();
     return skills.find((s) => s.name.toLowerCase() === name.toLowerCase());
   };
 
-  const listAvailable = () => scanSkills().map((s) => s.name).join(', ') || 'none';
+  const listAvailable = async () => {
+    const skills = await scanSkills();
+    return skills.map((s) => s.name).join(', ') || 'none';
+  };
 
   return {
-    'notion list': () => {
-      const skills = scanSkills();
+    'notion list': async () => {
+      const skills = await scanSkills();
       return skills.length ? skills.map((s) => s.name).join('\n') : 'No skills available.';
     },
 
-    'notion read': (name) => {
+    'notion read': async (name) => {
       if (!name) return 'Error: Usage: notion read <name>';
 
-      const skill = findSkill(name);
-      if (!skill) return `Error: Skill "${name}" not found. Available: ${listAvailable()}`;
+      const skill = await findSkill(name);
+      if (!skill) return `Error: Skill "${name}" not found. Available: ${await listAvailable()}`;
 
-      // Use the skill name from metadata (which matches the directory name)
-      const skillPath = path.join(getDatasourcesBase(), skill.name, 'SKILL.md');
-      if (!fs.existsSync(skillPath)) {
+      const fs = agentFS();
+      const skillPath = getSkillPath(skill.name);
+      const raw = await fs.readFile(skillPath);
+
+      if (!raw) {
         return `Error: Skill file not found for "${name}".`;
       }
 
-      const raw = fs.readFileSync(skillPath, 'utf-8');
       return matter(raw).content.trim();
     },
 
@@ -316,7 +274,7 @@ export function createNotionCommands(): Record<string, CommandHandler> {
       return getNotionHelp();
     },
 
-    'notion draft': (args) => {
+    'notion draft': async (args) => {
       if (!args) return 'Error: Usage: notion draft "<name>" "<content>"';
 
       const parsed = parseDraftArgs(args);
@@ -325,37 +283,37 @@ export function createNotionCommands(): Record<string, CommandHandler> {
       }
 
       const [name, content] = parsed;
-      const result = draftSkill(name, content);
+      const result = await draftSkill(name, content);
       return result.message;
     },
 
-    'notion show-draft': (name) => {
+    'notion show-draft': async (name) => {
       if (!name) return 'Error: Usage: notion show-draft "<name>"';
 
-      const content = readDraft(name);
+      const content = await readDraft(name);
       if (!content) return `Error: No draft found for "${name}".`;
 
       return content;
     },
 
-    'notion commit': (name) => {
+    'notion commit': async (name) => {
       if (!name) return 'Error: Usage: notion commit "<name>"';
 
-      const result = commitSkill(name);
+      const result = await commitSkill(name);
       return result.message;
     },
 
-    'notion discard': (name) => {
+    'notion discard': async (name) => {
       if (!name) return 'Error: Usage: notion discard "<name>"';
 
-      const result = discardDraft(name);
+      const result = await discardDraft(name);
       return result.message;
     },
 
-    'notion check': (name) => {
+    'notion check': async (name) => {
       if (!name) return 'Error: Usage: notion check "<name>"';
 
-      const schema = getDatasourceSchema(name);
+      const schema = await getDatasourceSchema(name);
       if (!schema) return `Error: No cached datasource found for "${name}". Use search_datasource first.`;
 
       return schema;

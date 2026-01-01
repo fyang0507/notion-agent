@@ -20,13 +20,13 @@ interface AgentOptions {
  * Factory function for creating the unified agent.
  * Used by both web (imported) and CLI (direct execution).
  */
-export function createUnifiedAgent(options?: AgentOptions) {
+export async function createUnifiedAgent(options?: AgentOptions) {
   const executeCommand = createCommandExecutor({
     ...createNotionCommands(),
     ...createPodcastCommands(),
   });
 
-  const skillList = getSkillList();
+  const skillList = await getSkillList();
 
   return new ToolLoopAgent({
     model: 'openai/gpt-5.1',
@@ -113,13 +113,13 @@ if (isMainModule) {
   const sdk = new NodeSDK({
     spanProcessors: [new LangfuseSpanProcessor()],
   });
-  
+
   sdk.start();
 
   // Start CLI
   async function main() {
     const traceId = crypto.randomUUID();
-    const unifiedAgent = createUnifiedAgent({ traceId });
+    const unifiedAgent = await createUnifiedAgent({ traceId });
 
     const rl = readline.createInterface({
       input: process.stdin,

@@ -4,11 +4,17 @@ Last Updated: 2026-01-01
 
 ## Recent Changes
 
-### 2026-01-01: Vercel Deployment Prep & GitHub Sync for AGENT_WORKING_FOLDER
+### 2026-01-01: Agent Filesystem Abstraction (agent-fs)
+- Created `src/lib/agent-fs/` with environment-aware file operations abstraction
+- Local backend: Direct filesystem via Node.js `fs` module
+- GitHub backend: Uses Octokit to read/write `vercel-agent-commit` branch when on Vercel
+- Converted all skill file operations to async: `scanSkills()`, `getSkillList()`, command handlers
+- Consolidated podcast storage into `podcast-store.ts`, removed `toml-reader.ts`/`toml-writer.ts`
+- Fixed `scripts/test-skills.ts` to handle async functions
+- `createUnifiedAgent()` now async, awaited in both CLI and API route
+
+### 2026-01-01: Vercel Deployment Prep & Conditional Langfuse
 - Made Langfuse telemetry conditional (skips init when `LANGFUSE_SECRET_KEY`/`LANGFUSE_PUBLIC_KEY` not set)
-- Created `src/lib/github-sync.ts` using Octokit to sync files to `vercel-agent-commit` branch (fire-and-forget with error logging)
-- Added sync hooks to `toml-writer.ts`, `datasource-store.ts`, `notion/index.ts` for podcasts.toml, schema.toml, SKILL.md
-- Created idempotent test script `scripts/test-github-sync.ts` that creates, syncs, verifies, and cleans up test files
 
 ### 2025-12-31: Conversation Persistence Refactor (localStorage → SQLite)
 - Migrated conversation storage from browser localStorage to server-side SQLite using `@libsql/client`

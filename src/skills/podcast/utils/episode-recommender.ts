@@ -1,34 +1,12 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as TOML from '@iarna/toml';
 import { generateText } from 'ai';
 import { fetchAllEpisodes, type Episode } from './rss-fetcher';
+import { loadPodcasts } from './podcast-store';
 import { RECOMMENDATION_CONFIG } from '../config/recommendation-config';
-
-const PODCASTS_PATH = path.join(process.cwd(), 'AGENT_WORKING_FOLDER', 'podcasts.toml');
-
-interface PodcastEntry {
-  name: string;
-  feedUrl: string;
-}
-
-interface PodcastsFile {
-  podcasts: PodcastEntry[];
-}
 
 export interface RecommendResult {
   success: boolean;
   message: string;
   feedErrors?: { feedUrl: string; error: string }[];
-}
-
-function loadPodcasts(): PodcastEntry[] {
-  if (!fs.existsSync(PODCASTS_PATH)) {
-    return [];
-  }
-  const content = fs.readFileSync(PODCASTS_PATH, 'utf-8');
-  const data = TOML.parse(content) as unknown as PodcastsFile;
-  return data.podcasts || [];
 }
 
 function formatEpisodeForLLM(episode: Episode, index: number): string {
@@ -43,7 +21,7 @@ export async function recommendEpisodesFromFeeds(
   days: number = 90,
   criteria?: string
 ): Promise<RecommendResult> {
-  const podcasts = loadPodcasts();
+  const podcasts = await loadPodcasts();
 
   if (podcasts.length === 0) {
     return {
