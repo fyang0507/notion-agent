@@ -10,7 +10,7 @@
  *   pnpm tsx scripts/test-rss-parser.ts https://feed.example.com/rss 30
  */
 
-import { fetchEpisodesFromFeed } from '../src/agents/podcast-agent/utils/rss-fetcher.js';
+import { fetchEpisodesFromFeed } from '../src/skills/podcast/utils/rss-fetcher.js';
 
 async function main() {
   const args = process.argv.slice(2);

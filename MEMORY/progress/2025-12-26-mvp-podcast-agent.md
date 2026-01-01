@@ -41,7 +41,7 @@ A CLI-based conversational agent for managing podcast subscriptions and discover
 
 ### 2. Telemetry Infrastructure
 **Langfuse integration for observability:**
-- [instrumentation.ts](instrumentation.ts) - Next.js instrumentation file using `@vercel/otel` + `langfuse-vercel`
+- [instrumentation.ts](instrumentation.ts) - Next.js instrumentation file using `@vercel/otel`
 - Individual agent-level telemetry using `@langfuse/otel` SpanProcessor for dev/testing
 
 ### 3. Development Scripts

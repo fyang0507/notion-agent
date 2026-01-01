@@ -1,8 +1,29 @@
 # Project Changelog
 
-Last Updated: 2025-12-29
+Last Updated: 2025-12-31
 
 ## Recent Changes
+
+### 2025-12-31: Conversation Persistence Refactor (localStorage → SQLite)
+- Migrated conversation storage from browser localStorage to server-side SQLite using `@libsql/client`
+- Implemented AI SDK `toUIMessageStreamResponse()` with `onFinish` callback for message persistence
+- Created API routes: `/api/conversations` (list/create), `/api/conversations/[id]` (get/update/delete), `/api/migrate` (one-time localStorage migration)
+- Refactored frontend to use AI SDK's `useChat` hook with `setMessages` sync for conversation switching
+- Added `tool-card.tsx` component for displaying tool invocations with expandable input/output
+
+### 2025-12-30: Next.js Frontend with Lovable-generated UI Integration
+- Integrated Lovable-generated Vite+React UI into Next.js App Router architecture
+- Added 40+ shadcn/ui components and 6 chat-specific components (chat-page, sidebar, message-list, input-area, voice-recorder)
+- Connected frontend hooks to existing backend APIs: `use-chat.ts` → `/api/chat` streaming, `use-voice-recorder.ts` → `/api/transcribe`
+- Implemented localStorage-based conversation history with `use-conversations.ts` hook
+- Added dark/light mode support via next-themes with mobile-responsive design
+
+### 2025-12-29: Unified Agent with Gateway Pattern
+- Unified podcast tools into skill-based bash tool design (unlock progressive disclosure)
+- Merged `notion-agent` and `podcast-agent` into unified agent at `src/agents/index.ts`
+- Extracted skills to standalone `src/skills/` directory with `notion/` and `podcast/` domains
+- Renamed all `skill *` commands to `notion *` prefix for clarity
+- Created shell command wrappers for podcast operations (`podcast list/search/save/check/recommend`), updated shell executor to support async command handlers for podcast operations
 
 ### 2025-12-29: Speech-to-Text (STT) Feature
 - Added Groq Whisper Large V3 transcription via Vercel AI SDK `@ai-sdk/groq`
