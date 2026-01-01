@@ -1,4 +1,4 @@
-import { db, initDb } from '@/lib/db';
+import { getDb, initDb } from '@/lib/db';
 
 interface OldMessage {
   id: string;
@@ -29,13 +29,13 @@ export async function POST(req: Request) {
 
     for (const conv of oldData) {
       // Insert conversation (ignore if exists)
-      await db.execute({
+      await getDb().execute({
         sql: 'INSERT OR IGNORE INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)',
         args: [conv.id, conv.title, conv.createdAt, conv.updatedAt],
       });
 
       // Check if conversation was actually inserted (not already existing)
-      const existing = await db.execute({
+      const existing = await getDb().execute({
         sql: 'SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?',
         args: [conv.id],
       });
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
           createdAt: new Date(msg.timestamp),
         };
 
-        await db.execute({
+        await getDb().execute({
           sql: 'INSERT OR IGNORE INTO messages (id, conversation_id, content, sequence_order) VALUES (?, ?, ?, ?)',
           args: [msg.id, conv.id, JSON.stringify(uiMessage), i],
         });

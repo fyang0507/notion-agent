@@ -1,11 +1,11 @@
-import { db, initDb } from '@/lib/db';
+import { getDb, initDb } from '@/lib/db';
 
 // GET /api/conversations - list all
 export async function GET() {
   try {
     await initDb();
 
-    const result = await db.execute(
+    const result = await getDb().execute(
       'SELECT * FROM conversations ORDER BY updated_at DESC'
     );
 
@@ -33,7 +33,7 @@ export async function POST() {
   const id = crypto.randomUUID();
   const now = Date.now();
 
-  await db.execute({
+  await getDb().execute({
     sql: 'INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)',
     args: [id, 'New conversation', now, now],
   });

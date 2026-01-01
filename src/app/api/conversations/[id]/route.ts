@@ -1,4 +1,4 @@
-import { db, initDb } from '@/lib/db';
+import { getDb, initDb } from '@/lib/db';
 import type { NextRequest } from 'next/server';
 
 type RouteContext = {
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
   await initDb();
   const { id } = await context.params;
 
-  const conv = await db.execute({
+  const conv = await getDb().execute({
     sql: 'SELECT * FROM conversations WHERE id = ?',
     args: [id],
   });
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     return Response.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const msgs = await db.execute({
+  const msgs = await getDb().execute({
     sql: 'SELECT * FROM messages WHERE conversation_id = ? ORDER BY sequence_order ASC',
     args: [id],
   });
@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
   const { id } = await context.params;
   const { title } = await req.json();
 
-  await db.execute({
+  await getDb().execute({
     sql: 'UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?',
     args: [title, Date.now(), id],
   });
@@ -54,8 +54,8 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
   const { id } = await context.params;
 
   // Delete messages first (foreign key), then conversation
-  await db.execute({ sql: 'DELETE FROM messages WHERE conversation_id = ?', args: [id] });
-  await db.execute({ sql: 'DELETE FROM conversations WHERE id = ?', args: [id] });
+  await getDb().execute({ sql: 'DELETE FROM messages WHERE conversation_id = ?', args: [id] });
+  await getDb().execute({ sql: 'DELETE FROM conversations WHERE id = ?', args: [id] });
 
   return Response.json({ success: true });
 }

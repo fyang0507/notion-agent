@@ -1,5 +1,5 @@
 import { createUnifiedAgent } from '@/agents';
-import { db, initDb } from '@/lib/db';
+import { getDb, initDb } from '@/lib/db';
 import { convertToModelMessages, type UIMessage } from 'ai';
 
 export const runtime = 'nodejs';
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       onFinish: async ({ messages: allMessages }) => {
         try {
           // Get the count of messages already in DB
-          const existingCount = await db.execute({
+          const existingCount = await getDb().execute({
             sql: 'SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?',
             args: [conversationId],
           });
@@ -51,14 +51,14 @@ export async function POST(req: Request) {
           // Save new messages
           for (let i = 0; i < newMessages.length; i++) {
             const msg = newMessages[i];
-            await db.execute({
+            await getDb().execute({
               sql: 'INSERT INTO messages (id, conversation_id, content, sequence_order) VALUES (?, ?, ?, ?)',
               args: [msg.id, conversationId, JSON.stringify(msg), startIndex + i],
             });
           }
 
           // Update conversation timestamp and title (use first user message as title if new)
-          const conv = await db.execute({
+          const conv = await getDb().execute({
             sql: 'SELECT title FROM conversations WHERE id = ?',
             args: [conversationId],
           });
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
             }
           }
 
-          await db.execute({
+          await getDb().execute({
             sql: 'UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?',
             args: [newTitle, Date.now(), conversationId],
           });
