@@ -104,6 +104,8 @@ export function ChatPage() {
       refreshConversations();
       // Clear the creating flag after the response is complete
       isCreatingConversationRef.current = false;
+      // Auto-focus input after streaming completes (textarea is no longer disabled)
+      setAutoFocusTrigger(prev => prev + 1);
     },
   });
 
@@ -168,6 +170,8 @@ export function ChatPage() {
       { text: content },
       { body: { conversationId: convId } }
     );
+    // Note: Focus is triggered in onFinish callback when streaming ends
+    // (can't focus disabled textarea during streaming)
   };
 
   const handleSendSuggestion = (text: string) => {

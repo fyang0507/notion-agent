@@ -11,6 +11,34 @@ interface MessageItemProps {
   isStreaming?: boolean;
 }
 
+// Helper to truncate URL for display (domain + path hint)
+function truncateUrl(url: string, maxLength = 40): string {
+  try {
+    const parsed = new URL(url);
+    const domain = parsed.hostname.replace(/^www\./, '');
+    const path = parsed.pathname + parsed.search;
+
+    if (path === '/' || path === '') {
+      return domain;
+    }
+
+    const full = domain + path;
+    if (full.length <= maxLength) {
+      return full;
+    }
+
+    // Truncate path but keep domain visible
+    const availableForPath = maxLength - domain.length - 3; // 3 for "..."
+    if (availableForPath > 5) {
+      return domain + path.slice(0, availableForPath) + '...';
+    }
+    return domain + '/...';
+  } catch {
+    // If URL parsing fails, just truncate the string
+    return url.length > maxLength ? url.slice(0, maxLength - 3) + '...' : url;
+  }
+}
+
 // Type guard for tool parts - they have type starting with 'tool-' but not 'tool-invocation'
 function isToolPart(
   part: UIMessage['parts'][number]
@@ -42,29 +70,58 @@ export function MessageItem({ message, isStreaming }: MessageItemProps) {
   };
 
   const renderInlineFormatting = (text: string, keyPrefix: string): React.ReactNode[] => {
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    // Split by formatting markers AND URLs
+    // URL regex: matches http:// or https:// followed by non-whitespace characters
+    const urlPattern = /(https?:\/\/[^\s<>[\]()]+)/g;
+    const formattingPattern = /(\*\*.*?\*\*|\*.*?\*|`.*?`)/g;
 
-    return parts.map((part, index) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={`${keyPrefix}-${index}`}>{part.slice(2, -2)}</strong>;
-      }
+    // First split by URLs, then by formatting within non-URL parts
+    const urlParts = text.split(urlPattern);
 
-      if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
-        return <em key={`${keyPrefix}-${index}`}>{part.slice(1, -1)}</em>;
-      }
-
-      if (part.startsWith('`') && part.endsWith('`')) {
+    return urlParts.flatMap((urlPart, urlIndex) => {
+      // Check if this part is a URL
+      if (urlPart.match(/^https?:\/\//)) {
         return (
-          <code
-            key={`${keyPrefix}-${index}`}
-            className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono"
+          <a
+            key={`${keyPrefix}-url-${urlIndex}`}
+            href={urlPart}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline break-all"
+            title={urlPart}
           >
-            {part.slice(1, -1)}
-          </code>
+            {truncateUrl(urlPart)}
+          </a>
         );
       }
 
-      return <span key={`${keyPrefix}-${index}`}>{part}</span>;
+      // For non-URL parts, apply formatting
+      const formattingParts = urlPart.split(formattingPattern);
+
+      return formattingParts.map((part, index) => {
+        const key = `${keyPrefix}-${urlIndex}-${index}`;
+
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={key}>{part.slice(2, -2)}</strong>;
+        }
+
+        if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+          return <em key={key}>{part.slice(1, -1)}</em>;
+        }
+
+        if (part.startsWith('`') && part.endsWith('`')) {
+          return (
+            <code
+              key={key}
+              className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono"
+            >
+              {part.slice(1, -1)}
+            </code>
+          );
+        }
+
+        return <span key={key}>{part}</span>;
+      });
     });
   };
 
@@ -106,7 +163,7 @@ export function MessageItem({ message, isStreaming }: MessageItemProps) {
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary leading-none">
                 {orderedMatch[1]}
               </span>
-              <span className="flex-1 leading-relaxed">{renderInlineFormatting(orderedMatch[2], key)}</span>
+              <span className="flex-1" style={{ lineHeight: '1.8' }}>{renderInlineFormatting(orderedMatch[2], key)}</span>
             </div>
           );
         }
@@ -117,19 +174,45 @@ export function MessageItem({ message, isStreaming }: MessageItemProps) {
           return (
             <div key={key} className="flex gap-2.5 py-0.5">
               <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
-              <span className="flex-1 leading-relaxed">{renderInlineFormatting(unorderedMatch[1], key)}</span>
+              <span className="flex-1" style={{ lineHeight: '1.8' }}>{renderInlineFormatting(unorderedMatch[1], key)}</span>
             </div>
           );
         }
 
-        // Regular line with optional line break
-        if (line.trim() === '') {
-          return <br key={key} />;
+        // Check for blockquote
+        const blockquoteMatch = line.match(/^\s*>\s*(.*)/);
+        if (blockquoteMatch) {
+          return (
+            <blockquote
+              key={key}
+              className="border-l-2 border-primary/30 pl-3 py-1 text-muted-foreground italic"
+              style={{ lineHeight: '1.8' }}
+            >
+              {renderInlineFormatting(blockquoteMatch[1], key)}
+            </blockquote>
+          );
         }
 
+        // Empty line - render as paragraph break (with visual spacing)
+        if (line.trim() === '') {
+          return <div key={key} className="h-3" />;
+        }
+
+        // Check if previous line was a block element - no extra br needed
+        const prevLine = lineIndex > 0 ? lines[lineIndex - 1] : '';
+        const prevWasListItem = prevLine.match(/^\s*(\d+)\.\s+.+/) || prevLine.match(/^\s*[-–—•*]\s+.+/);
+        const prevWasBlockquote = prevLine.match(/^\s*>\s*.*/);
+        const prevWasEmpty = prevLine.trim() === '';
+
+        // Add line break before regular text if:
+        // - Not the first line
+        // - Previous line was not empty (empty line already provides break)
+        // - Previous line was not a block element (block elements provide break)
+        const needsBreak = lineIndex > 0 && !prevWasEmpty && !prevWasListItem && !prevWasBlockquote;
+
         return (
-          <span key={key}>
-            {lineIndex > 0 && lines[lineIndex - 1].trim() !== '' && <br />}
+          <span key={key} style={{ lineHeight: '1.8' }}>
+            {needsBreak && <br />}
             {renderInlineFormatting(line, key)}
           </span>
         );
@@ -202,17 +285,21 @@ export function MessageItem({ message, isStreaming }: MessageItemProps) {
       >
         <div className="space-y-2">{renderParts()}</div>
 
-        <div className="mt-1 flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          {!isUser && textContent && (
-            <Button variant="ghost" size="icon" onClick={copyToClipboard} className="h-6 w-6">
-              {copied ? (
-                <Check className="h-3 w-3 text-green-500" />
-              ) : (
-                <Copy className="h-3 w-3" />
-              )}
-            </Button>
-          )}
-        </div>
+        {/* Copy button - absolutely positioned to not affect layout */}
+        {!isUser && textContent && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={copyToClipboard}
+            className="absolute -bottom-1 -right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 hover:bg-background"
+          >
+            {copied ? (
+              <Check className="h-3 w-3 text-green-500" />
+            ) : (
+              <Copy className="h-3 w-3 text-muted-foreground" />
+            )}
+          </Button>
+        )}
       </div>
 
       {isUser && (

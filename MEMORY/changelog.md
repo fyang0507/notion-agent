@@ -4,6 +4,12 @@ Last Updated: 2026-01-01
 
 ## Recent Changes
 
+### 2026-01-01: Chat UI Polish (4 Enhancements)
+- Added clickable URL rendering with domain+path truncation, blockquote support, and improved line spacing (1.8 line-height for CJK/Latin)
+- Fixed user message bubble styling by adding missing CSS variables (`--color-chat-user/assistant/border`) in light/dark modes
+- Implemented auto-focus on input after streaming ends using `wasStreamingRef` to detect streaming state transition
+- Fixed copy button layout by making it absolutely positioned (no longer causes bloated message appearance)
+
 ### 2026-01-01: Agent Filesystem Abstraction (agent-fs)
 - Created `src/lib/agent-fs/` with environment-aware file operations abstraction
 - Local backend: Direct filesystem via Node.js `fs` module

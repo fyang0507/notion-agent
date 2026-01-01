@@ -32,6 +32,7 @@ export function InputArea({
 }: InputAreaProps) {
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const wasStreamingRef = useRef(false);
 
   // Focus textarea when autoFocusTrigger changes
   useEffect(() => {
@@ -39,6 +40,17 @@ export function InputArea({
       textareaRef.current.focus();
     }
   }, [autoFocusTrigger]);
+
+  // Focus textarea when streaming ends (more reliable than trigger)
+  useEffect(() => {
+    if (wasStreamingRef.current && !isStreaming && textareaRef.current) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 10);
+    }
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   useEffect(() => {
     if (transcribedText) {
