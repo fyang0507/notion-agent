@@ -1,12 +1,25 @@
-import { createClient } from '@libsql/client';
+import { createClient, Client } from '@libsql/client';
 import { join } from 'path';
 
-// Works for both local dev (file:) and production (Turso cloud)
-const localDbPath = join(process.cwd(), 'data', 'local.db');
+// Lazy initialization to avoid connection during build
+let _db: Client | null = null;
 
-export const db = createClient({
-  url: process.env.TURSO_DATABASE_URL || `file:${localDbPath}`,
-  authToken: process.env.TURSO_AUTH_TOKEN, // undefined for local, set by Vercel integration for prod
+function getDb(): Client {
+  if (!_db) {
+    const localDbPath = join(process.cwd(), 'data', 'local.db');
+    _db = createClient({
+      url: process.env.TURSO_DATABASE_URL || `file:${localDbPath}`,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+  }
+  return _db;
+}
+
+// Export getter for backward compatibility
+export const db = new Proxy({} as Client, {
+  get(_, prop) {
+    return (getDb() as any)[prop];
+  },
 });
 
 let dbInitialized = false;
