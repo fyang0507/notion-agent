@@ -1,6 +1,6 @@
 ---
-name: 2025 Progress Tracker
-description: Skill for adding items to the 2025 Progress Tracker database.
+name: 2026 Progress Tracker
+description: Skill for adding items to the 2026 Progress Tracker database.
 ---
 
 Creation Rules:
